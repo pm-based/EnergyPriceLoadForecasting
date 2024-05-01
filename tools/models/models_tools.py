@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from tools.models.DNN import DNNRegressor
 from tools.models.ARX import ARXRegressor
 
+
 def get_model_class_from_conf(conf):
     """
     Map the model class depending on the config name
@@ -129,6 +130,9 @@ class TensorflowRegressor():
 
     def plot_weights(self):
         self.regressor.plot_weights()
+
+    def print_weights_stats(self):
+        self.regressor.print_weights_stats()
 
     def __quantiles_out__(self, preds):
         # Expand dimension to enable concat in ensemble

@@ -28,8 +28,8 @@ def compute_pinball_scores(y_true, pred_quantiles, quantiles_levels):
 #--------------------------------------------------------------------------------------------------------------------
 # Set PEPF task to execute
 PF_task_name = 'EM_price'
-# Set Model setup to execute
-exper_setup = 'QR-DNN'
+# Set Model setup to execute: point_ARX,
+exper_setup = 'point-ARX'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
@@ -39,7 +39,7 @@ hyper_mode = 'load_tuned'
 # Plot train history flag
 plot_train_history=False
 plot_weights=False
-
+print_weights_stats = True
 #---------------------------------------------------------------------------------------------------------------------
 # Load experiments configuration from json file
 configs=load_data_model_configs(task_name=PF_task_name, exper_setup=exper_setup, run_id=run_id)
@@ -61,7 +61,8 @@ model_hyperparams = PrTSF_eng.get_model_hyperparams(method=hyper_mode, optuna_m=
 # Exec recalib loop over the test_set samples, using the tuned hyperparams
 test_predictions = PrTSF_eng.run_recalibration(model_hyperparams=model_hyperparams,
                                                plot_history=plot_train_history,
-                                               plot_weights=plot_weights)
+                                               plot_weights=plot_weights,
+                                               print_weights_stats=print_weights_stats)
 
 #--------------------------------------------------------------------------------------------------------------------
 # Compute pinball score

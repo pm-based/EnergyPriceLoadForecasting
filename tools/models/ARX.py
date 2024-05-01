@@ -13,7 +13,8 @@ import os
 import shutil
 import matplotlib.pyplot as plt
 
-
+#TODO: there is a best way to do that? ..evaluation_matrics is in the right place?
+from ..evaluation_metrics import evaluation_metrics
 
 
 class ARXRegressor:
@@ -25,7 +26,7 @@ class ARXRegressor:
         x_in = tf.keras.layers.Input(shape=(self.settings['input_size'],))
         logit = tf.keras.layers.Dense(self.settings['pred_horiz'],
                                       activation='linear',
-                                      kernel_regularizer=tf.keras.regularizers.l1(self.settings['l1'])
+                                      kernel_regularizer=tf.keras.regularizers.l1_l2(l1=self.settings['l1'], l2=self.settings['l2'])
                                       )(x_in)
         #output = tf.reshape(logit, (-1, self.settings['pred_horiz'], 1))
         output = tf.keras.layers.Reshape((self.settings['pred_horiz'], 1))(logit)
@@ -34,7 +35,8 @@ class ARXRegressor:
         self.model= tf.keras.Model(inputs=[x_in], outputs=[output])
         # Compile the model
         self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=self.settings['lr']),
-                           loss=loss
+                           loss=loss,
+                           metrics=evaluation_metrics(self.settings['evaluation_metrics'])
                            )
 
     def fit(self, train_x, train_y, val_x, val_y, verbose=0, pruning_call=None):
@@ -139,6 +141,22 @@ class ARXRegressor:
         w_b = self.model.layers[1].get_weights()
         plt.imshow(w_b[0].T)
         l1=str(self.settings['l1'])
-        plt.title('ARX Weights - l1:' + l1)
+        l2 = str(self.settings['l2'])
+        plt.title('ARX Weights - l1:' + l1 + ' l2:' + l2)
         plt.show()
+
+    # NEW FUNCTION!
+    def print_weights_stats(self):
+        """
+        Print model weights statistcs
+        :print:
+        """
+        w_b = self.model.layers[1].get_weights()
+        a = w_b[0].flatten()
+        b = w_b[1].flatten()
+        w_b = np.concatenate([a, b])
+        L1_norm = np.linalg.norm(w_b, 1)
+        L2_norm = np.linalg.norm(w_b, 2)
+        # TODO: consider to implment a diffenrent metric: Lp_norm/len(w_b)
+        print('L1 norm of weights: ' + str(L1_norm) + ', L2 norm of weights: ' + str(L2_norm))
 

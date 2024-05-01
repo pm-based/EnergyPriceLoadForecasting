@@ -531,7 +531,7 @@ class PrTsfRecalibEngine:
         else:
             sys.exit('ERROR: uknown hyperparam method')
 
-    def run_recalibration(self, model_hyperparams:Dict, plot_history=False, plot_weights=False):
+    def run_recalibration(self, model_hyperparams:Dict, plot_history=False, plot_weights=False, print_weights_stats=False):
         """
         Main recalibration loop
         """
@@ -581,6 +581,9 @@ class PrTsfRecalibEngine:
                 preds_test_e.append(model.predict(rec_samples.x_test))
                 if plot_weights:
                     model.plot_weights()
+
+                if print_weights_stats:
+                    model.print_weights_stats()
 
             # Aggregate ensemble predictions
             ensem_preds_test = ensemble.aggregate_preds(preds_test_e)

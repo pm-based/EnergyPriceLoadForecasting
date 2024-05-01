@@ -32,6 +32,12 @@
         "max_epochs": 800,
         "batch_size": 64,
         "patience": 20,
-        "num_ense": 1
+        "num_ense": 1,
+        "evaluation_metrics": [
+            "mse",
+            "rmse",
+            "mae",
+            "smape"
+        ]
     }
 }
