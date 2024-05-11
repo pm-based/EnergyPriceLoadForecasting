@@ -9,7 +9,8 @@ import pandas as pd
 import numpy as np
 os.environ["TF_USE_LEGACY_KERAS"]="1"
 from tools.PrTSF_Recalib_tools import PrTsfRecalibEngine, load_data_model_configs
-from tools.prediction_quantiles_tools import plot_quantiles
+from tools.prediction_quantiles_tools import plot_quantiles, build_alpha_quantiles_map
+
 
 #--------------------------------------------------------------------------------------------------------------------
 def compute_pinball_scores(y_true, pred_quantiles, quantiles_levels):
@@ -24,7 +25,20 @@ def compute_pinball_scores(y_true, pred_quantiles, quantiles_levels):
         score.append(np.expand_dims(loss_q,-1))
     score = np.mean(np.concatenate(score, axis=-1), axis=0)
     return score
-
+#--------------------------------------------------------------------------------------------------------------------
+def compute_Winkler_scores(y_true, quantiles, alpha):
+    """
+       Utility function to compute the Winckler's score on the test results
+       return: Winckler's scores computed for each quantile level and each step in the pred horizon
+    """
+    score = []
+    alpha_q = build_alpha_quantiles_map(alpha, quantiles)
+    for i in enumerate(alpha):
+        l_hat, u_hat = alpha_q[alpha[i]]
+        delta = u_hat - l_hat
+        score_i = delta + 2/(1-alpha[i]) * ((l_hat - y_true)*(y_true>l_hat) + (y_true - u_hat)*(y_true>u_hat))
+        score.append(score_i)
+    return score
 #--------------------------------------------------------------------------------------------------------------------
 # Set PEPF task to execute
 PF_task_name = 'EM_price'
@@ -73,6 +87,15 @@ pinball_scores = compute_pinball_scores(y_true=test_predictions[PF_task_name].to
                                         pred_quantiles=test_predictions.loc[:,test_predictions.columns != PF_task_name].
                                         to_numpy().reshape(-1, pred_steps, len(quantiles_levels)),
                                         quantiles_levels=quantiles_levels)
+
+#--------------------------------------------------------------------------------------------------------------------
+# Compute Winkler's score
+quantiles_levels = PrTSF_eng.model_configs['target_quantiles']
+alpha_levels = PrTSF_eng.model_configs['target_alpha_levels']
+pred_steps = configs['model_config']['pred_horiz']
+
+Winkler_scores = compute_Winkler_scores(y_true=test_predictions[PF_task_name].to_numpy().reshape(-1, pred_steps),
+                                        quantiles=quantiles_levels, alpha=alpha_levels)
 
 #--------------------------------------------------------------------------------------------------------------------
 # Plot test predictions
