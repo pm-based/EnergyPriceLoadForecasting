@@ -80,8 +80,9 @@ class TensorflowRegressor():
         elif settings['PF_method'] == 'point':
             loss = 'mae'
         elif (settings['PF_method'] == 'Normal'
+            or settings['PF_method'] == 'JSU'
         ):
-            loss = lambda y, rv_y: -rv_y.log_prob(y)
+            loss = lambda y, rv_y: -rv_y.log_prob(y) # Negative log-likelihood
         else:
             sys.exit('ERROR: unknown PF_method config!')
 
@@ -145,8 +146,12 @@ class TensorflowRegressor():
         return tf.expand_dims(tf.concat([loc,scale], axis=-1), axis=2)
 
     def __pred_JSU_params__(self, pred_dists: tfp.distributions):
-        print('To be implemented')
-        return 0
+        skewness = tf.expand_dims(pred_dists.skewness, axis=-1)
+        tailweight = tf.expand_dims(pred_dists.tailweight, axis=-1)
+        loc = tf.expand_dims(pred_dists.loc, axis=-1)
+        scale = tf.expand_dims(pred_dists.scale, axis=-1)
+        # Expand dimension to enable concat in ensemble
+        return tf.expand_dims(tf.concat([skewness, tailweight, loc, scale], axis=-1), axis=2)
 
 
 
@@ -211,5 +216,17 @@ class Ensemble():
     @staticmethod
     def __build_JSU_PIs__(preds_test, settings):
         # for each de component, sample, aggregate samples and compute quantiles
-        print('build_JSU_PIs to be implemented!')
-        return 0
+        pred_samples = []
+        for k in range(preds_test.shape[2]):
+            #print("Skewness:", preds_test[:, :, k, 0])  # Debug print
+            #print("Tailweight:", preds_test[:, :, k, 1])  # Debug print
+            #print("Loc:", preds_test[:, :, k, 2])  # Debug print
+            #print("Scale:", preds_test[:, :, k, 3])  # Debug print
+            pred_samples.append(tfd.JohnsonSU(
+                skewness=preds_test[:, :, k, 0],
+                tailweight=preds_test[:, :, k, 1],
+                loc=preds_test[:, :, k, 2],
+                scale=preds_test[:, :, k, 3]).sample(10000).numpy())
+        return np.transpose(np.quantile(np.concatenate(pred_samples, axis=0),
+                                        q=settings['target_quantiles'], axis=0),
+                            axes=(1, 2, 0)).reshape(-1, len(settings['target_quantiles']))

@@ -42,8 +42,8 @@ def compute_Winkler_scores(y_true, quantiles, alpha):
 #--------------------------------------------------------------------------------------------------------------------
 # Set PEPF task to execute
 PF_task_name = 'EM_price'
-# Set Model setup to execute: point_ARX,
-exper_setup = 'point-ARX'
+# Set Model setup to execute: point_ARX, point-DNN, QR-DNN, N-DNN
+exper_setup = 'JSU-DNN'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
@@ -53,7 +53,7 @@ hyper_mode = 'load_tuned'
 # Plot train history flag
 plot_train_history=False
 plot_weights=False
-print_weights_stats = True
+print_weights_stats = False
 #---------------------------------------------------------------------------------------------------------------------
 # Load experiments configuration from json file
 configs=load_data_model_configs(task_name=PF_task_name, exper_setup=exper_setup, run_id=run_id)

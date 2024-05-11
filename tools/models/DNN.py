@@ -53,8 +53,19 @@ class DNNRegressor:
                                           activation='linear')(x)
             output = tfp.layers.DistributionLambda(
                 lambda t: tfd.Normal(
-                    log=t[..., :self.settings['pred_horiz']],
+                    loc=t[..., :self.settings['pred_horiz']],
                     scale=1e-3 + 3 * tf.math.softplus(0.05 * t[..., self.settings['pred_horiz']:])))(logit)
+
+        elif self.settings['PF_method'] == 'JSU':
+            out_size = 4
+            logit = tf.keras.layers.Dense(self.settings['pred_horiz'] * out_size,
+                                          activation='linear')(x)
+            output = tfp.layers.DistributionLambda(
+                lambda t: tfd.JohnsonSU(
+                    skewness=t[..., :self.settings['pred_horiz']],
+                    tailweight=t[..., self.settings['pred_horiz']:2 * self.settings['pred_horiz']],
+                    loc=t[..., 2 * self.settings['pred_horiz']:3 * self.settings['pred_horiz']],
+                    scale=1e-3 + tf.math.softplus(t[..., 3 * self.settings['pred_horiz']:])))(logit)
 
         else:
             sys.exit('ERROR: unknown PF_method config!')
@@ -150,12 +161,12 @@ class DNNRegressor:
         return settings
 
     @staticmethod
-    def get_hyperparams_searchspace():
+    def get_hyperparams_searchspace(): # used only for grid search
         return {'hidden_size': [128, 512],
                 'lr': [1e-4, 1e-3]}
 
     @staticmethod
-    def get_hyperparams_dict_from_configs(configs):
+    def get_hyperparams_dict_from_configs(configs): # takes params from config file
         model_hyperparams = {
             'hidden_size': configs['hidden_size'],
             'n_hidden_layers': configs['n_hidden_layers'],
