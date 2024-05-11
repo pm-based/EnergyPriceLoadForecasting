@@ -75,16 +75,24 @@ class TensorflowRegressor():
 
         tf.keras.backend.clear_session()
         # Map the loss to be used
-        if settings['PF_method'] == 'qr':
-            loss = PinballLoss(quantiles=settings['target_quantiles'])
-        elif settings['PF_method'] == 'point':
-            loss = 'mae'
-        elif (settings['PF_method'] == 'Normal'
-            or settings['PF_method'] == 'JSU'
-        ):
-            loss = lambda y, rv_y: -rv_y.log_prob(y) # Negative log-likelihood
+        if 'loss' in settings:
+            if settings['loss'] == 'APL':
+                loss = PinballLoss(quantiles=settings['target_quantiles'])
+            elif settings['loss'] == 'WS':
+                sys.exit('ERROR: loss not implemented!')
+            else:
+                sys.exit('ERROR: unknown loss config!')
         else:
-            sys.exit('ERROR: unknown PF_method config!')
+            if settings['PF_method'] == 'qr':
+                loss = PinballLoss(quantiles=settings['target_quantiles'])
+            elif settings['PF_method'] == 'point':
+                loss = 'mae'
+            elif (settings['PF_method'] == 'Normal'
+                or settings['PF_method'] == 'JSU'
+            ):
+                loss = lambda y, rv_y: -rv_y.log_prob(y) # Negative log-likelihood
+            else:
+                sys.exit('ERROR: unknown PF_method config!')
 
         # Instantiate the model
         if settings['model_class']=='DNN':
