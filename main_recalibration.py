@@ -47,7 +47,7 @@ exper_setup = 'JSU-DNN'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
-run_id = 'recalib_opt_grid_1_1'
+run_id = 'compare_QR_N_JSU'
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
 hyper_mode = 'load_tuned'
 # Plot train history flag
