@@ -47,7 +47,7 @@ class DNNRegressor:
             #fix quintile crossing by sorting
             output = tf.keras.layers.Lambda(lambda x: tf.sort(x, axis=-1))(output)
 
-        elif  self.settings['PF_method'] == 'Normal':
+        elif self.settings['PF_method'] == 'Normal':
             out_size = 2
             logit = tf.keras.layers.Dense(self.settings['pred_horiz'] * out_size,
                                           activation='linear')(x)
