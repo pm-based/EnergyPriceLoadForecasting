@@ -43,13 +43,14 @@ def compute_Winkler_scores(y_true, quantiles, alpha):
 # Set PEPF task to execute
 PF_task_name = 'EM_price'
 # Set Model setup to execute: point_ARX, point-DNN, QR-DNN, N-DNN
-exper_setup = 'JSU-DNN'
+exper_setup = 'QR-DNN'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
 run_id = 'compare_QR_N_JSU'
+
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
-hyper_mode = 'load_tuned'
+hyper_mode = 'optuna_tuner'
 # Plot train history flag
 plot_train_history=False
 plot_weights=False
@@ -90,12 +91,12 @@ pinball_scores = compute_pinball_scores(y_true=test_predictions[PF_task_name].to
 
 #--------------------------------------------------------------------------------------------------------------------
 # Compute Winkler's score
-quantiles_levels = PrTSF_eng.model_configs['target_quantiles']
-alpha_levels = PrTSF_eng.model_configs['target_alpha_levels']
-pred_steps = configs['model_config']['pred_horiz']
-
-Winkler_scores = compute_Winkler_scores(y_true=test_predictions[PF_task_name].to_numpy().reshape(-1, pred_steps),
-                                        quantiles=quantiles_levels, alpha=alpha_levels)
+# quantiles_levels = PrTSF_eng.model_configs['target_quantiles']
+# alpha_levels = PrTSF_eng.model_configs['target_alpha_levels']
+# pred_steps = configs['model_config']['pred_horiz']
+#
+# Winkler_scores = compute_Winkler_scores(y_true=test_predictions[PF_task_name].to_numpy().reshape(-1, pred_steps),
+#                                         quantiles=quantiles_levels, alpha=alpha_levels)
 
 #--------------------------------------------------------------------------------------------------------------------
 # Plot test predictions
