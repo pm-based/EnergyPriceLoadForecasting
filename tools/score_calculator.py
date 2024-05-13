@@ -25,7 +25,7 @@ class ScoreCalculator:
             loss_q = np.maximum(q * error, (q - 1) * error)
             score.append(np.expand_dims(loss_q,-1))
         score = np.mean(np.concatenate(score, axis=-1), axis=0)
-        self.pinball_scores = pd.DataFrame(score)
+        self.pinball_scores = pd.DataFrame(score, columns=self.quantiles_levels, index=range(24))
         return score
 
     def compute_winkler_scores(self):
@@ -42,7 +42,8 @@ class ScoreCalculator:
                         np.maximum(np.subtract(l_hat, self.y_true), 0) + np.maximum(np.subtract(self.y_true, u_hat), 0))
             score.append(np.expand_dims(score_i, -1))
         score = np.mean(np.concatenate(score, axis=-1), axis=0)
-        self.winkler_scores = pd.DataFrame(score)
+        alpha_levels = [1 - 2 * q for q in self.quantiles_levels[:len(self.quantiles_levels) // 2]]
+        self.winkler_scores = pd.DataFrame(score, columns=alpha_levels, index=range(24))
         return score
 
     def display_scores(self, score_type='pinball', table=True, heatmap=True):
@@ -52,20 +53,27 @@ class ScoreCalculator:
         """
         if score_type == 'pinball':
             scores = self.pinball_scores
+            x_labels = self.quantiles_levels
         elif score_type == 'winkler':
             scores = self.winkler_scores
+            x_labels = [1 - 2 * q for q in self.quantiles_levels[:len(self.quantiles_levels) // 2]]
         else:
             print("Invalid score type. Choose 'pinball' or 'winkler'.")
             return
 
         # Display the scores in a table
         if table:
+            print(f'\n{score_type.capitalize()} Scores:\n')
             print(tabulate(scores, headers='keys', tablefmt='psql'))
 
         # Display the scores in a heatmap
         if heatmap:
-            plt.figure(figsize=(10, 10))
+            plt.figure(figsize=(16, 13))
             sns.heatmap(scores, cmap='viridis', annot=True, fmt=".3f", annot_kws={"size": 5})
+            plt.xticks(np.arange(len(x_labels)), x_labels, rotation=90)
+            plt.xlabel('Quantile Levels')  # Add x-axis label
+            plt.ylabel('Hours')  # Add y-axis label
+            plt.title(f'{score_type.capitalize()} Scores')  # Add title
             plt.show()
 
     def plot_scores_3d(self, score_type='pinball'):
@@ -75,18 +83,22 @@ class ScoreCalculator:
         """
         if score_type == 'pinball':
             scores = self.pinball_scores
+            x_labels = self.quantiles_levels
         elif score_type == 'winkler':
             scores = self.winkler_scores
+            x_labels = [1 - 2 * q for q in self.quantiles_levels[:len(self.quantiles_levels) // 2]]
         else:
             print("Invalid score type. Choose 'pinball' or 'winkler'.")
             return
 
-        fig = plt.figure(figsize=(12, 8))
+        fig = plt.figure(figsize=(17, 14))
         ax = fig.add_subplot(111, projection='3d')
 
         X, Y = np.meshgrid(np.arange(scores.shape[1]), np.arange(scores.shape[0]))
         ax.plot_surface(X, Y, scores.values, cmap='coolwarm', alpha=0.7)
 
+        ax.set_xticks(np.arange(len(x_labels)))
+        ax.set_xticklabels(x_labels, rotation=90)
         ax.set_xlabel('Quantile Levels')
         ax.set_ylabel('Hours')
         ax.set_zlabel(f'{score_type.capitalize()} Scores')
