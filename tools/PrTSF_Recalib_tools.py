@@ -17,6 +17,8 @@ import logging
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import FunctionTransformer
+from sklearn.preprocessing import RobustScaler
 import optuna
 from optuna.integration import TFKerasPruningCallback
 from optuna.trial import TrialState
@@ -280,6 +282,16 @@ class PrTsfRecalibEngine:
             preproc = {
                 'feat': StandardScaler(),
                 'target': StandardScaler()
+            }
+        elif self.data_configs.preprocess == 'RobustScaler':
+            preproc = {
+                'feat': RobustScaler(),
+                'target': RobustScaler()
+            }
+        elif self.data_configs.preprocess == 'Arcsinh':
+            preproc = {
+                'feat': FunctionTransformer(func=np.arcsinh, inverse_func=np.sinh),
+                'target': FunctionTransformer(func=np.arcsinh, inverse_func=np.sinh)
             }
         else:
             sys.exit('ERROR: selected preprocessing not implemented')
