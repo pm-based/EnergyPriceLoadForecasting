@@ -26,17 +26,17 @@ def compute_pinball_scores(y_true, pred_quantiles, quantiles_levels):
     score = np.mean(np.concatenate(score, axis=-1), axis=0)
     return score
 #--------------------------------------------------------------------------------------------------------------------
-def compute_Winkler_scores(y_true, quantiles, alpha):
+def compute_Winkler_scores(y_true, alpha_list, pred_interval):
     """
        Utility function to compute the Winckler's score on the test results
        return: Winckler's scores computed for each quantile level and each step in the pred horizon
     """
     score = []
-    alpha_q = build_alpha_quantiles_map(alpha, quantiles)
-    for i in enumerate(alpha):
-        l_hat, u_hat = alpha_q[alpha[i]]
+    for alpha in alpha_list:
+        l_hat = pred_interval[alpha]['l']
+        u_hat = pred_interval[alpha]['u']
         delta = u_hat - l_hat
-        score_i = delta + 2/(1-alpha[i]) * ((l_hat - y_true)*(y_true>l_hat) + (y_true - u_hat)*(y_true>u_hat))
+        score_i = delta + 2/(1-alpha) * ((l_hat - y_true)*(y_true>l_hat) + (y_true - u_hat)*(y_true>u_hat))
         score.append(score_i)
     return score
 #--------------------------------------------------------------------------------------------------------------------
@@ -50,7 +50,7 @@ exper_setup = 'QR-DNN'
 run_id = 'compare_QR_N_JSU'
 
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
-hyper_mode = 'optuna_tuner'
+hyper_mode = 'load_tuned'
 # Plot train history flag
 plot_train_history=False
 plot_weights=False
@@ -91,12 +91,13 @@ pinball_scores = compute_pinball_scores(y_true=test_predictions[PF_task_name].to
 
 #--------------------------------------------------------------------------------------------------------------------
 # Compute Winkler's score
-# quantiles_levels = PrTSF_eng.model_configs['target_quantiles']
-# alpha_levels = PrTSF_eng.model_configs['target_alpha_levels']
-# pred_steps = configs['model_config']['pred_horiz']
+quantiles_levels = PrTSF_eng.model_configs['target_quantiles']
+alpha_levels = PrTSF_eng.model_configs['target_alpha']
+pred_interval = PrTSF_eng.model_configs['q_alpha_map']
+pred_steps = configs['model_config']['pred_horiz']
 #
-# Winkler_scores = compute_Winkler_scores(y_true=test_predictions[PF_task_name].to_numpy().reshape(-1, pred_steps),
-#                                         quantiles=quantiles_levels, alpha=alpha_levels)
+Winkler_scores = compute_Winkler_scores(y_true=test_predictions[PF_task_name].to_numpy().reshape(-1, pred_steps),
+                                        alpha_list=alpha_levels, pred_interval=pred_interval)
 
 #--------------------------------------------------------------------------------------------------------------------
 # Plot test predictions
