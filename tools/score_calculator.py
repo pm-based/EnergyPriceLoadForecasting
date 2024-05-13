@@ -87,8 +87,8 @@ class ScoreCalculator:
         X, Y = np.meshgrid(np.arange(scores.shape[1]), np.arange(scores.shape[0]))
         ax.plot_surface(X, Y, scores.values, cmap='coolwarm', alpha=0.7)
 
-        ax.set_xlabel('Prediction Steps')
-        ax.set_ylabel('Quantile Levels')
+        ax.set_xlabel('Quantile Levels')
+        ax.set_ylabel('Hours')
         ax.set_zlabel(f'{score_type.capitalize()} Scores')
 
         plt.show()

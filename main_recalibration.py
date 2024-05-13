@@ -5,43 +5,19 @@ Main script to run the recalibration experiments
 # License: Apache-2.0 license
 
 import os
+# Suppress warnings
+display_warnings = False
+if not display_warnings:
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import pandas as pd
 import numpy as np
 os.environ["TF_USE_LEGACY_KERAS"]="1"
 from tools.PrTSF_Recalib_tools import PrTsfRecalibEngine, load_data_model_configs
 from tools.prediction_quantiles_tools import plot_quantiles, build_alpha_quantiles_map
 import matplotlib.pyplot as plt
+from tools.score_calculator import ScoreCalculator
 from mpl_toolkits.mplot3d import Axes3D
 
-#--------------------------------------------------------------------------------------------------------------------
-def compute_pinball_scores(y_true, pred_quantiles, quantiles_levels):
-    """
-    Utility function to compute the pinball score on the test results
-    return: pinball scores computed for each quantile level and each step in the pred horizon
-    """
-    score = []
-    for i, q in enumerate(quantiles_levels):
-        error = np.subtract(y_true, pred_quantiles[:, :, i])
-        loss_q = np.maximum(q * error, (q - 1) * error)
-        score.append(np.expand_dims(loss_q,-1))
-    score = np.mean(np.concatenate(score, axis=-1), axis=0)
-    return score
-#--------------------------------------------------------------------------------------------------------------------
-def compute_Winkler_scores(y_true, pred_quantiles, quantiles_levels):
-    """
-       Utility function to compute the Winkler's score on the test results
-       return: Winkler's scores computed for each quantile level and each step in the pred horizon
-    """
-    score = []
-    for i, q in enumerate(quantiles_levels[:len(quantiles_levels)//2]):
-        l_hat = pred_quantiles[:, :, i]
-        u_hat = pred_quantiles[:, :, -i-1]
-        delta = np.subtract(u_hat, l_hat)
-        score_i = delta + 2/(1-q) * (
-                    np.maximum(np.subtract(l_hat, y_true), 0) + np.maximum(np.subtract(y_true, u_hat), 0))
-        score.append(np.expand_dims(score_i, -1))
-    score = np.mean(np.concatenate(score, axis=-1), axis=0)
-    return score
 #--------------------------------------------------------------------------------------------------------------------
 # Set PEPF task to execute
 PF_task_name = 'EM_price'
@@ -50,17 +26,17 @@ exper_setup = 'QR-DNN'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
-run_id = 'compare_QR_N_JSU'
-
+run_id = 'arcsinh_preprocessing'
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
 hyper_mode = 'load_tuned'
 # Plot train history flag
-plot_train_history=False
-plot_weights=False
+plot_train_history = False
+plot_weights = False
 print_weights_stats = False
+plot_quantiles_bool = False
 #---------------------------------------------------------------------------------------------------------------------
 # Load experiments configuration from json file
-configs=load_data_model_configs(task_name=PF_task_name, exper_setup=exper_setup, run_id=run_id)
+configs = load_data_model_configs(task_name=PF_task_name, exper_setup=exper_setup, run_id=run_id)
 
 # Load dataset
 dir_path = os.getcwd()
@@ -87,41 +63,23 @@ test_predictions = PrTSF_eng.run_recalibration(model_hyperparams=model_hyperpara
 quantiles_levels = PrTSF_eng.model_configs['target_quantiles']
 pred_steps = configs['model_config']['pred_horiz']
 
-pinball_scores = compute_pinball_scores(y_true=test_predictions[PF_task_name].to_numpy().reshape(-1,pred_steps),
-                                        pred_quantiles=test_predictions.loc[:,test_predictions.columns != PF_task_name].
-                                        to_numpy().reshape(-1, pred_steps, len(quantiles_levels)),
-                                        quantiles_levels=quantiles_levels)
-# Print Pinball scores
-print("Pinball Scores: ", pinball_scores)
-
-#--------------------------------------------------------------------------------------------------------------------
-# Compute Winkler's score
-quantiles_levels = PrTSF_eng.model_configs['target_quantiles']
-pred_steps = configs['model_config']['pred_horiz']
-#
-Winkler_scores = compute_Winkler_scores(y_true=test_predictions[PF_task_name].to_numpy().reshape(-1, pred_steps),
-                                        pred_quantiles=test_predictions.loc[:,test_predictions.columns != PF_task_name].
-                                        to_numpy().reshape(-1, pred_steps, len(quantiles_levels)), quantiles_levels=quantiles_levels)
-
-# Print Winkler scores
-print("Winkler Scores: ", Winkler_scores)
-
-# Create a meshgrid for alpha levels and prediction steps
-X, Y = np.meshgrid(np.arange(1, pred_steps + 1), alpha_levels)
-
-# Create a 3D plot
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.plot_surface(X, Y, Winkler_scores.reshape(X.shape), cmap='viridis')
-ax.view_init(elev=30, azim=30)
-ax.set_xlabel('Prediction Steps')
-ax.set_ylabel('Alpha Levels')
-ax.set_zlabel('Winkler Scores')
-
-plt.show()
 #--------------------------------------------------------------------------------------------------------------------
 # Plot test predictions
-plot_quantiles(test_predictions, target=PF_task_name)
+if plot_quantiles_bool:
+    plot_quantiles(test_predictions, target=PF_task_name)
+
+calculator = ScoreCalculator(y_true=test_predictions[PF_task_name].to_numpy().reshape(-1, pred_steps),
+                             pred_quantiles=test_predictions.loc[:,test_predictions.columns != PF_task_name].
+                             to_numpy().reshape(-1, pred_steps, len(quantiles_levels)), quantiles_levels=quantiles_levels)
+
+calculator.compute_pinball_scores()
+calculator.compute_winkler_scores()
+
+calculator.display_scores(score_type='pinball', table=True, heatmap=True)
+calculator.display_scores(score_type='winkler', table=True, heatmap=True)
+
+calculator.plot_scores_3d(score_type='pinball')
+calculator.plot_scores_3d(score_type='winkler')
 
 #--------------------------------------------------------------------------------------------------------------------
 print('Done!')
