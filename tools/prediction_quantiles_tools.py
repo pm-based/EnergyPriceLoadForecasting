@@ -9,6 +9,7 @@ Utility functions for quantile prediction
 import numpy as np
 from typing import List
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import pandas as pd
 
 def build_alpha_quantiles_map(target_alpha: List, target_quantiles: List):
@@ -38,8 +39,21 @@ def plot_quantiles(results: pd.DataFrame, target: str):
     title = target
     idx = results[target].index
     fig1, ax1 = plt.subplots()
-    for i in results.columns.to_list():
-        ax1.plot(idx, results[i], linestyle="-", color='steelblue', linewidth=0.9)
+
+    # Get the list of columns
+    columns = results.columns.to_list()
+    half = len(columns) // 2
+
+    # Create a colormap
+    colormap = cm.get_cmap('viridis', half)
+
+    # Plot the first half of the columns with a gradient of colors
+    for i in range(half):
+        ax1.plot(idx, results[columns[i]], linestyle="-", color=colormap(i), linewidth=0.9)
+
+    # Plot the second half of the columns with the same colors but in opposite order
+    for i in range(half, len(columns)):
+        ax1.plot(idx, results[columns[i]], linestyle="-", color=colormap(half - 1 - (i - half)), linewidth=0.9)
 
     ax1.plot(idx, results[target], '-', color='firebrick', label='$y_{true}$')
     ax1.grid()

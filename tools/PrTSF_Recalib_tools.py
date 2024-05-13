@@ -489,7 +489,7 @@ class PrTsfRecalibEngine:
                       + self.model_configs['model_class'] + '-'
                       + self.model_configs['PF_method']
                       + '-' + optuna_m)
-        storage_name="sqlite:///db.sqlite3"
+        storage_name = "sqlite:///db.sqlite3"
 
         study = optuna.create_study(direction="minimize",
                                     sampler=sampler,
