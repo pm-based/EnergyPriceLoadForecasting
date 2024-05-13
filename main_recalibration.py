@@ -35,9 +35,11 @@ def compute_Winkler_scores(y_true, alpha_list, pred_interval):
     for alpha in alpha_list:
         l_hat = pred_interval[alpha]['l']
         u_hat = pred_interval[alpha]['u']
-        delta = u_hat - l_hat
-        score_i = delta + 2/(1-alpha) * ((l_hat - y_true)*(y_true>l_hat) + (y_true - u_hat)*(y_true>u_hat))
-        score.append(score_i)
+        delta = np.subtract(u_hat, l_hat)
+        score_i = delta + 2/(1-alpha) * (
+                    np.maximum(np.subtract(l_hat, y_true), 0) + np.maximum(np.subtract(y_true, u_hat), 0))
+        score.append(np.expand_dims(score_i, -1))
+    score = np.mean(np.concatenate(score, axis=-1), axis=0)
     return score
 #--------------------------------------------------------------------------------------------------------------------
 # Set PEPF task to execute
@@ -88,6 +90,8 @@ pinball_scores = compute_pinball_scores(y_true=test_predictions[PF_task_name].to
                                         pred_quantiles=test_predictions.loc[:,test_predictions.columns != PF_task_name].
                                         to_numpy().reshape(-1, pred_steps, len(quantiles_levels)),
                                         quantiles_levels=quantiles_levels)
+# Print Pinball scores
+print("Pinball Scores: ", pinball_scores)
 
 #--------------------------------------------------------------------------------------------------------------------
 # Compute Winkler's score
@@ -98,6 +102,9 @@ pred_steps = configs['model_config']['pred_horiz']
 #
 Winkler_scores = compute_Winkler_scores(y_true=test_predictions[PF_task_name].to_numpy().reshape(-1, pred_steps),
                                         alpha_list=alpha_levels, pred_interval=pred_interval)
+
+# Print Winkler scores
+print("Winkler Scores: ", Winkler_scores)
 
 #--------------------------------------------------------------------------------------------------------------------
 # Plot test predictions
