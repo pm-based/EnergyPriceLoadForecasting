@@ -10,7 +10,8 @@ import numpy as np
 os.environ["TF_USE_LEGACY_KERAS"]="1"
 from tools.PrTSF_Recalib_tools import PrTsfRecalibEngine, load_data_model_configs
 from tools.prediction_quantiles_tools import plot_quantiles, build_alpha_quantiles_map
-
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 #--------------------------------------------------------------------------------------------------------------------
 def compute_pinball_scores(y_true, pred_quantiles, quantiles_levels):
@@ -26,17 +27,17 @@ def compute_pinball_scores(y_true, pred_quantiles, quantiles_levels):
     score = np.mean(np.concatenate(score, axis=-1), axis=0)
     return score
 #--------------------------------------------------------------------------------------------------------------------
-def compute_Winkler_scores(y_true, alpha_list, pred_interval):
+def compute_Winkler_scores(y_true, pred_quantiles, quantiles_levels):
     """
-       Utility function to compute the Winckler's score on the test results
-       return: Winckler's scores computed for each quantile level and each step in the pred horizon
+       Utility function to compute the Winkler's score on the test results
+       return: Winkler's scores computed for each quantile level and each step in the pred horizon
     """
     score = []
-    for alpha in alpha_list:
-        l_hat = pred_interval[alpha]['l']
-        u_hat = pred_interval[alpha]['u']
+    for i, q in enumerate(quantiles_levels[:len(quantiles_levels)//2]):
+        l_hat = pred_quantiles[:, :, i]
+        u_hat = pred_quantiles[:, :, -i-1]
         delta = np.subtract(u_hat, l_hat)
-        score_i = delta + 2/(1-alpha) * (
+        score_i = delta + 2/(1-q) * (
                     np.maximum(np.subtract(l_hat, y_true), 0) + np.maximum(np.subtract(y_true, u_hat), 0))
         score.append(np.expand_dims(score_i, -1))
     score = np.mean(np.concatenate(score, axis=-1), axis=0)
@@ -96,16 +97,28 @@ print("Pinball Scores: ", pinball_scores)
 #--------------------------------------------------------------------------------------------------------------------
 # Compute Winkler's score
 quantiles_levels = PrTSF_eng.model_configs['target_quantiles']
-alpha_levels = PrTSF_eng.model_configs['target_alpha']
-pred_interval = PrTSF_eng.model_configs['q_alpha_map']
 pred_steps = configs['model_config']['pred_horiz']
 #
 Winkler_scores = compute_Winkler_scores(y_true=test_predictions[PF_task_name].to_numpy().reshape(-1, pred_steps),
-                                        alpha_list=alpha_levels, pred_interval=pred_interval)
+                                        pred_quantiles=test_predictions.loc[:,test_predictions.columns != PF_task_name].
+                                        to_numpy().reshape(-1, pred_steps, len(quantiles_levels)), quantiles_levels=quantiles_levels)
 
 # Print Winkler scores
 print("Winkler Scores: ", Winkler_scores)
 
+# Create a meshgrid for alpha levels and prediction steps
+X, Y = np.meshgrid(np.arange(1, pred_steps + 1), alpha_levels)
+
+# Create a 3D plot
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.plot_surface(X, Y, Winkler_scores.reshape(X.shape), cmap='viridis')
+ax.view_init(elev=30, azim=30)
+ax.set_xlabel('Prediction Steps')
+ax.set_ylabel('Alpha Levels')
+ax.set_zlabel('Winkler Scores')
+
+plt.show()
 #--------------------------------------------------------------------------------------------------------------------
 # Plot test predictions
 plot_quantiles(test_predictions, target=PF_task_name)
