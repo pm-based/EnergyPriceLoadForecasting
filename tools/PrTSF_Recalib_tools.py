@@ -463,8 +463,11 @@ class PrTsfRecalibEngine:
                       plot_history=False)
 
             # Compute val loss
-            results = model.evaluate(x=train_vali_block.x_vali, y=train_vali_block.y_vali)
-            return results
+            # TODO: Implement suppor to add additional metrics in optuna.
+            # Check result also for probabilistic forecasting
+            metrics = model.evaluate(x=train_vali_block.x_vali, y=train_vali_block.y_vali)
+            #results = metrics[0]
+            return metrics
 
         # start from first train sample
         init_sample = 0
