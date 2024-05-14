@@ -81,5 +81,9 @@ calculator.display_scores(score_type='winkler', table=True, heatmap=True)
 calculator.plot_scores_3d(score_type='pinball')
 calculator.plot_scores_3d(score_type='winkler')
 
+calculator.export_scores("./")
+calculator.export_scores("./")
+
+
 #--------------------------------------------------------------------------------------------------------------------
 print('Done!')
