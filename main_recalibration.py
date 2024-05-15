@@ -14,9 +14,7 @@ import numpy as np
 os.environ["TF_USE_LEGACY_KERAS"]="1"
 from tools.PrTSF_Recalib_tools import PrTsfRecalibEngine, load_data_model_configs
 from tools.prediction_quantiles_tools import plot_quantiles, build_alpha_quantiles_map
-import matplotlib.pyplot as plt
 from tools.score_calculator import ScoreCalculator
-from mpl_toolkits.mplot3d import Axes3D
 
 #--------------------------------------------------------------------------------------------------------------------
 # Set PEPF task to execute
