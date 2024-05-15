@@ -18,9 +18,9 @@ from tools.score_calculator import ScoreCalculator
 
 #--------------------------------------------------------------------------------------------------------------------
 # Set PEPF task to execute
-PF_task_name = 'EM_price'
+PF_task_name = 'NetLoad'
 # Set Model setup to execute: point_ARX, point-DNN, QR-DNN, N-DNN
-exper_setup = 'QR-DNN'
+exper_setup = 'JSU-DNN'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
