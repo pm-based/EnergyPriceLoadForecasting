@@ -46,7 +46,7 @@ class ScoreCalculator:
         self.winkler_scores = pd.DataFrame(score, columns=alpha_levels, index=range(24))
         return score
 
-    def display_scores(self, score_type='pinball', table=True, heatmap=True):
+    def display_scores(self, score_type='pinball', table=True, heatmap=True, summary=True):
         """
         Display the scores in a nicely formatted table.
         score_type: 'pinball' or 'winkler'
@@ -75,6 +75,10 @@ class ScoreCalculator:
             plt.ylabel('Hours')  # Add y-axis label
             plt.title(f'{score_type.capitalize()} Scores')  # Add title
             plt.show()
+
+        if summary:
+            print(f'\n{score_type.capitalize()} Summary of scores:\n')
+            print(np.mean(scores))
 
     def plot_scores_3d(self, score_type='pinball'):
         """
