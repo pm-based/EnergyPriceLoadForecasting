@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 
 from tools.models.DNN import DNNRegressor
 from tools.models.ARX import ARXRegressor
+from tools.models.Hybrid_v0 import HybridARXDNNRegressor
+
 
 
 def get_model_class_from_conf(conf):
@@ -27,6 +29,8 @@ def get_model_class_from_conf(conf):
         model_class = ARXRegressor
     elif conf == 'DNN':
         model_class = DNNRegressor
+    elif conf == 'H1':
+        model_class = HybridARXDNNRegressor
     else:
         sys.exit('ERROR: unknown model_class')
     return model_class
@@ -102,6 +106,17 @@ class TensorflowRegressor():
                                                                               pred_horiz=self.pred_horiz).shape[1]
             # Build the model architecture
             self.regressor = ARXRegressor(settings, loss)
+
+        elif  settings['model_class']=='H1':
+            # get input size for the chosen model architecture
+            settings['input_size']=HybridARXDNNRegressor.build_model_input_from_series(x=sample_x,
+                                                                              col_names=self.x_columns_names,
+                                                                              pred_horiz=self.pred_horiz).shape[1]
+
+
+            # Build the model architecture
+            self.regressor = HybridARXDNNRegressor(settings, 'mae',loss)
+
 
         else:
             sys.exit('ERROR: unknown model_class')

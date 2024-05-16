@@ -20,11 +20,11 @@ from tools.score_calculator import ScoreCalculator
 # Set PEPF task to execute
 PF_task_name = 'NetLoad'
 # Set Model setup to execute: point_ARX, point-DNN, QR-DNN, N-DNN
-exper_setup = 'JSU-DNN'
+exper_setup = 'Hybrid_v0'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
-run_id = 'benchmark'
+run_id = 'test0'
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
 hyper_mode = 'load_tuned'
 # Plot train history flag
