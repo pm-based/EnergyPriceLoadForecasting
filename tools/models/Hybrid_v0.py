@@ -20,15 +20,17 @@ class HybridARXDNNRegressor:
 
         # Predict with ARX model to get residuals
         y_pred_arx_train = self.arx_model.predict(train_x)
-        residuals_train = train_y - y_pred_arx_train
+        residuals_train = train_y - np.squeeze(y_pred_arx_train.numpy())
 
         y_pred_arx_val = self.arx_model.predict(val_x)
-        residuals_val = val_y - y_pred_arx_val
+        residuals_val = val_y - np.squeeze(y_pred_arx_val.numpy())
+
+
 
         # Fit DNN model on residuals
-        history_dnn = self.dnn_model.fit(train_x, residuals_train, val_x, residuals_val, verbose, pruning_call)
+        history_dnn = self.dnn_model.fit(train_x, train_y, val_x, residuals_val, verbose, pruning_call)
 
-        return history_arx#, history_dnn
+        return history_dnn#, history_dnn
 
     def predict(self, x):
         # Predict with ARX model
@@ -94,8 +96,7 @@ class ARXRegressor:
 
         self.model = tf.keras.Model(inputs=[x_in], outputs=[output])
         self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=self.settings['lr']),
-                           loss=loss,
-                           metrics=self.settings['evaluation_metrics'])
+                           loss=loss)
 
     def fit(self, train_x, train_y, val_x, val_y, verbose=0, pruning_call=None):
         train_x = self.build_model_input_from_series(train_x, self.settings['x_columns_names'],
@@ -128,12 +129,26 @@ class ARXRegressor:
 
     @staticmethod
     def build_model_input_from_series(x, col_names: List, pred_horiz: int):
-        past_col_idxs = [index for (index, item) in enumerate(col_names) if 'target' in item or 'past' in item]
-        const_col_idxs = [index for (index, item) in enumerate(col_names) if 'const' in item]
-        futu_col_idxs = [index for (index, item) in enumerate(col_names) if 'futu' in item]
+        # get index of target and past features
+        past_col_idxs = [index for (index, item) in enumerate(col_names)
+                         if features_keys['target'] in item or features_keys['past'] in item]
+
+        # get index of const features
+        const_col_idxs = [index for (index, item) in enumerate(col_names)
+                          if features_keys['const'] in item]
+
+        # get index of futu features
+        futu_col_idxs = [index for (index, item) in enumerate(col_names)
+                         if features_keys['futu'] in item]
+
+        # build conditioning variables for past features
         past_feat = [x[:, :-pred_horiz, feat_idx] for feat_idx in past_col_idxs]
+        # build conditioning variables for futu features
         futu_feat = [x[:, -pred_horiz:, feat_idx] for feat_idx in futu_col_idxs]
+        # build conditioning variables for cal features
         c_feat = [x[:, -pred_horiz:-pred_horiz + 1, feat_idx] for feat_idx in const_col_idxs]
+
+        # return flattened input
         return np.concatenate(past_feat + futu_feat + c_feat, axis=1)
 
 
@@ -158,8 +173,7 @@ class DNNModel:
                 scale=1e-3 + tf.math.softplus(t[..., 3 * self.settings['pred_horiz']:])))(logit)
 
         self.model = tf.keras.Model(inputs=[x_in], outputs=[output])
-        self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=self.settings['lr']), loss=loss,
-                           metrics=self.settings['evaluation_metrics'])
+        self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=self.settings['lr']), loss=loss)
 
     def fit(self, train_x, train_y, val_x, val_y, verbose=0, pruning_call=None):
         es = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=self.settings['patience'],

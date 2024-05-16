@@ -25,7 +25,7 @@
     },
     "model_config": {
         "PF_method": "JSU",
-        "model_class": "DNN",
+        "model_class": "H1",
         "optuna_m": "random",
         "target_alpha": [
             0.01,

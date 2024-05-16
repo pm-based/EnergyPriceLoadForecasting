@@ -115,7 +115,7 @@ class TensorflowRegressor():
 
 
             # Build the model architecture
-            self.regressor = HybridARXDNNRegressor(settings, 'mae',loss)
+            self.regressor = HybridARXDNNRegressor(settings, 'mse',loss)
 
 
         else:

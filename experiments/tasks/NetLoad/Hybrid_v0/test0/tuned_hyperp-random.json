@@ -1,1 +1,1 @@
-{"hidden_size": 320, "n_hidden_layers": 2, "lr": 0.0008460966794192131, "activation": "softplus"}
+{"hidden_size": 320, "n_hidden_layers": 2, "lr": 0.0008460966794192131, "activation": "softplus", "ARX_l1":1e-4, "ARX_l2": 1e-4}
