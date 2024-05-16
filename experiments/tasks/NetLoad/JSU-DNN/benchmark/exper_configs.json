@@ -17,7 +17,7 @@
             "d": 10
         },
         "keep_past_train_samples": false,
-        "steps_lag_win": 7,
+        "steps_lag_win": 65,
         "pred_horiz": 24,
         "preprocess": "StandardScaler",
         "shuffle_mode": "none",
@@ -26,7 +26,7 @@
     "model_config": {
         "PF_method": "JSU",
         "model_class": "DNN",
-        "optuna_m": "grid_search",
+        "optuna_m": "random",
         "target_alpha": [
             0.01,
             0.02,

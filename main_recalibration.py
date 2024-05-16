@@ -24,7 +24,7 @@ exper_setup = 'JSU-DNN'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
-run_id = 'arcsinh_preprocessing'
+run_id = 'benchmark'
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
 hyper_mode = 'load_tuned'
 # Plot train history flag
@@ -73,8 +73,8 @@ calculator = ScoreCalculator(y_true=test_predictions[PF_task_name].to_numpy().re
 calculator.compute_pinball_scores()
 calculator.compute_winkler_scores()
 
-calculator.display_scores(score_type='pinball', table=True, heatmap=True)
-calculator.display_scores(score_type='winkler', table=True, heatmap=True)
+calculator.display_scores(score_type='pinball', table=False, heatmap=True)
+calculator.display_scores(score_type='winkler', table=False, heatmap=True)
 
 calculator.plot_scores_3d(score_type='pinball')
 calculator.plot_scores_3d(score_type='winkler')
