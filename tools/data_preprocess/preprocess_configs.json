@@ -27,7 +27,7 @@
         "FUTU__WindSpeedAt100mRegionalSd":                        "StandardScaler",
         "FUTU__WindSpeedAt10mRegionalMean":                       "StandardScaler",
         "FUTU__WindSpeedAt10mRegionalSd":                         "StandardScaler",
-        "TARG__NetLoad":                                          "StandardScaler"
+        "TARG__NetLoad":                                          "SSA"
     },
     "target_method": "StandardScaler"
 

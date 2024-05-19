@@ -3,6 +3,7 @@ import json
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.preprocessing import RobustScaler
+from pyts.decomposition import SingularSpectrumAnalysis
 import numpy as np
 
 
@@ -31,7 +32,7 @@ class Preprocessor:
 
     def load_data_from_path(self, path):
         self.data = pd.read_csv(path)
-
+    #TODO: GESTIRE IL FATTO CHE ORA IL TARGET DEVE ESSERE L'ULTIMO NEL JSON.
     def preprocess_data(self, pred_horiz):
 
         # NOTE! get pred_horiz from "data_config", in the class it should be self.data_config.pred_horiz
@@ -60,6 +61,12 @@ class Preprocessor:
                 self.data[feature + '_sin'] = np.sin(2 * np.pi * df_feat / 365)/2 + 0.5
                 self.data[feature + '_cos'] = np.cos(2 * np.pi * df_feat / 365)/2 + 0.5
                 self.data.drop(feature, axis=1, inplace=True)  # Do I need this?
+            elif method == 'SSA':
+                ssa = SingularSpectrumAnalysis(window_size=20)
+                np_feat = np.array(df_feat)
+                ssa.fit(np_feat[:-pred_horiz].reshape(1, -1))
+                np_feat_ssa = ssa.transform(np_feat.reshape(1, -1))
+                self.data[feature] = np.sum(np_feat_ssa, axis=1).reshape(-1,1)
             # Add more methods here
             elif method == 'None':
                 pass
@@ -78,6 +85,8 @@ class Preprocessor:
             rescaled_PIs[model_configs['target_quantiles'][i]] = self.RobustScaler.inverse_transform(ens_p[:, i:i + 1])[:, 0]
         elif self.methods[self.target] == 'ArcSinh':
             rescaled_PIs[model_configs['target_quantiles'][i]] = self.ArcSinh.inverse_transform(ens_p[:, i:i + 1])[:, 0]
+        elif self.methods[self.target] == 'SSA':
+            rescaled_PIs[model_configs['target_quantiles'][i]] = ens_p[:, 0]  # Not sure if this is correct
         # Add more methods here
         elif self.methods[self.target] == 'None':
             rescaled_PIs[model_configs['target_quantiles'][i]] = ens_p[:, 0]  # Not sure if this is correct
