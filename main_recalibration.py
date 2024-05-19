@@ -20,11 +20,11 @@ from tools.score_calculator import ScoreCalculator
 # Set PEPF task to execute
 PF_task_name = 'NetLoad'
 # Set Model setup to execute: point_ARX, point-DNN, QR-DNN, N-DNN
-exper_setup = 'QR-DNN'
+exper_setup = 'JSU-DNN'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
-run_id = 'recalib_opt_grid_1_1'
+run_id = 'benchmark'
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
 hyper_mode = 'load_tuned'
 # Set the path to the preprocessing configs file

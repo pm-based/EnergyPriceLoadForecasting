@@ -19,7 +19,7 @@
         "keep_past_train_samples": false,
         "steps_lag_win": 65,
         "pred_horiz": 24,
-        "preprocess": "StandardScaler",
+        "preprocess": "Custom",
         "shuffle_mode": "none",
         "num_vali_samples": 100
     },
