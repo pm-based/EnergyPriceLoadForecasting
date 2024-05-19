@@ -27,6 +27,7 @@ from tools.prediction_quantiles_tools import plot_quantiles
 
 from tools.data_utils import columns_keys, features_keys
 from tools.models.models_tools import regression_model, Ensemble, get_model_class_from_conf
+from tools.data_preprocess.preprocessing_tools import Preprocessor
 
 
 class RecalibBlock:
@@ -180,6 +181,15 @@ def load_data_model_configs(task_name: str, exper_setup: str, run_id: str):
     return {'data_config': data_configs,
             'model_config': expe_confs['model_config']}
 
+def load_preproc_configs(preproc_configs_file: str):
+    """
+    Load preprocessing configurations from json file
+    """
+    preproc_configs_file_path = os.path.join(os.getcwd(), 'tools', 'data_preprocess', preproc_configs_file)
+    with open(preproc_configs_file_path, 'r') as file:
+        configs = json.load(file)
+    return configs
+
 
 class PrTsfRecalibEngine:
     """
@@ -187,7 +197,8 @@ class PrTsfRecalibEngine:
     """
     def __init__(self, dataset,
                  data_configs: PrTsfDataloaderConfigs,
-                 model_configs: Dict):
+                 model_configs: Dict,
+                 preproc_configs: Dict):
 
         self.data_configs = data_configs
         # load dataset csv file
@@ -198,6 +209,7 @@ class PrTsfRecalibEngine:
         # build test samples idxs used by the recalibration iterator
         self.test_set_idxs = self.__build_test_samples_idxs__()
         # instantiate preprocessing_objs
+        self.preproc_configs = preproc_configs
         self.preproc = self.__instantiate_preproc__()
 
         # store model configs and add internal confs automatically
@@ -278,7 +290,9 @@ class PrTsfRecalibEngine:
                          step=self.data_configs.pred_horiz)
 
     def __instantiate_preproc__(self):
-        if self.data_configs.preprocess == 'StandardScaler':
+        if self.data_configs.preprocess == 'Custom':
+            preproc = Preprocessor(preproc_configs=self.preproc_configs)
+        elif self.data_configs.preprocess == 'StandardScaler':
             preproc = {
                 'feat': StandardScaler(),
                 'target': StandardScaler()
@@ -303,23 +317,26 @@ class PrTsfRecalibEngine:
         df_feat = df.filter(regex=features_keys['past'] + '|' + features_keys['futu'] + '|' + features_keys['const'])
         df_target = df.filter(regex=features_keys['target'])
 
+        if self.data_configs.preprocess != 'Custom':
         # Fit preprocessing objects using the series steps before the pred_horiz (i.e., the recalibration test sample)
-        if fit_preproc:
-            self.preproc['feat'].fit(df_feat[:-self.data_configs.pred_horiz])
-            self.preproc['target'].fit(df_target[:-self.data_configs.pred_horiz])
-
-        # Transform the series by preprocessing objects
-        np_feat_scaled = self.preproc['feat'].transform(df_feat)
-        np_target_scaled = self.preproc['target'].transform(df_target)
-
-        # Build scaled df
-        df_feat_scaled = pd.DataFrame(data=np_feat_scaled,
-                                      index=df.index,
-                                      columns=df_feat.columns)
-        df_target_scaled = pd.DataFrame(data=np_target_scaled,
-                                        index=df.index,
-                                        columns=df_target.columns)
-        df_scaled = pd.concat([df_target_scaled, df_feat_scaled], axis=1)
+            if fit_preproc:
+                self.preproc['feat'].fit(df_feat[:-self.data_configs.pred_horiz])
+                self.preproc['target'].fit(df_target[:-self.data_configs.pred_horiz])
+                # Transform the series by preprocessing objects
+            np_feat_scaled = self.preproc['feat'].transform(df_feat)
+            np_target_scaled = self.preproc['target'].transform(df_target)
+                # Build scaled df
+            df_feat_scaled = pd.DataFrame(data=np_feat_scaled,
+                                          index=df.index,
+                                          columns=df_feat.columns)
+            df_target_scaled = pd.DataFrame(data=np_target_scaled,
+                                            index=df.index,
+                                            columns=df_target.columns)
+            df_scaled = pd.concat([df_target_scaled, df_feat_scaled], axis=1)
+        else:
+            df_feat_target = pd.concat([df_feat, df_target], axis=1)
+            self.preproc.load_data(df_feat_target)
+            df_scaled = self.preproc.preprocess_data(pred_horiz=self.data_configs.pred_horiz)
 
         # store x columns names
         self.x_columns_names = df_scaled.columns.tolist()
@@ -381,7 +398,7 @@ class PrTsfRecalibEngine:
         target_quantiles = [0.5]
         for alpha in target_alpha:
             target_quantiles.append(alpha/2)
-            target_quantiles.append(1- alpha / 2)
+            target_quantiles.append(1 - alpha / 2)
         target_quantiles.sort()
         return target_quantiles
 
@@ -607,8 +624,12 @@ class PrTsfRecalibEngine:
             ens_p = ensemble.get_preds_test_quantiles(preds_test=ensem_preds_test)
             rescaled_PIs = {}
             for i in range(ens_p.shape[-1]):
-                rescaled_PIs[self.model_configs['target_quantiles'][i]] = self.preproc['target'].inverse_transform(
-                    ens_p[:, i:i + 1])[:, 0]
+                if self.data_configs.preprocess != 'Custom':
+                    rescaled_PIs[self.model_configs['target_quantiles'][i]] = self.preproc['target'].inverse_transform(
+                        ens_p[:, i:i + 1])[:, 0]
+                else:
+                    rescaled_PIs = self.preproc.inverse_transform(
+                        model_configs=self.model_configs, rescaled_PIs=rescaled_PIs, ens_p=ens_p, i=i)
             results_df = pd.DataFrame(rescaled_PIs)
             ensem_test_PIs.append(results_df)
 

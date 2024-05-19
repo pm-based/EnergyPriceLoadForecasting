@@ -12,7 +12,7 @@ if not display_warnings:
 import pandas as pd
 import numpy as np
 os.environ["TF_USE_LEGACY_KERAS"]="1"
-from tools.PrTSF_Recalib_tools import PrTsfRecalibEngine, load_data_model_configs
+from tools.PrTSF_Recalib_tools import PrTsfRecalibEngine, load_data_model_configs, load_preproc_configs
 from tools.prediction_quantiles_tools import plot_quantiles, build_alpha_quantiles_map
 from tools.score_calculator import ScoreCalculator
 
@@ -20,21 +20,24 @@ from tools.score_calculator import ScoreCalculator
 # Set PEPF task to execute
 PF_task_name = 'NetLoad'
 # Set Model setup to execute: point_ARX, point-DNN, QR-DNN, N-DNN
-exper_setup = 'JSU-DNN'
+exper_setup = 'QR-DNN'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
-run_id = 'benchmark'
+run_id = 'recalib_opt_grid_1_1'
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
 hyper_mode = 'load_tuned'
+# Set the path to the preprocessing configs file
+preprocessing = 'preprocess_configs.json'
 # Plot train history flag
-plot_train_history = False
+plot_train_history = True
 plot_weights = False
 print_weights_stats = False
-plot_quantiles_bool = False
+plot_quantiles_bool = True
 #---------------------------------------------------------------------------------------------------------------------
 # Load experiments configuration from json file
 configs = load_data_model_configs(task_name=PF_task_name, exper_setup=exper_setup, run_id=run_id)
+preproc_configs = load_preproc_configs(preproc_configs_file=preprocessing)
 
 # Load dataset
 dir_path = os.getcwd()
@@ -45,7 +48,8 @@ ds.set_index(ds.columns[0], inplace=True)
 # Instantiate recalibratione engine
 PrTSF_eng = PrTsfRecalibEngine(dataset=ds,
                                data_configs=configs['data_config'],
-                               model_configs=configs['model_config'])
+                               model_configs=configs['model_config'],
+                               preproc_configs=preproc_configs)
 
 # Get model hyperparameters (previously saved or by tuning)
 model_hyperparams = PrTSF_eng.get_model_hyperparams(method=hyper_mode, optuna_m=configs['model_config']['optuna_m'])
