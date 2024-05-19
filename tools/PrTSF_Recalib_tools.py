@@ -334,8 +334,8 @@ class PrTsfRecalibEngine:
                                             columns=df_target.columns)
             df_scaled = pd.concat([df_target_scaled, df_feat_scaled], axis=1)
         else:
-            df_feat_target = pd.concat([df_feat, df_target], axis=1)
-            self.preproc.load_data(df_feat_target)
+            df_target_feat = pd.concat([df_target, df_feat], axis=1)
+            self.preproc.load_data(df_target_feat)
             df_scaled = self.preproc.preprocess_data(pred_horiz=self.data_configs.pred_horiz)
 
         # store x columns names

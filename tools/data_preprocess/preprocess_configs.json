@@ -1,48 +1,34 @@
 {
     "data_config": {
         "dataset_name": "LF_bench_0.csv",
-        "idx_start_train": {
-            "y": 2014,
-            "m": 1,
-            "d": 2
-        },
-        "idx_start_oos_preds": {
-            "y": 2017,
-            "m": 1,
-            "d": 1
-        },
-        "idx_end_oos_preds": {
-            "y": 2017,
-            "m": 1,
-            "d": 31
-        },
         "target": "TARG__NetLoad"
     },
     "methods": {
-        "TARG__NetLoad":                                          "ArcSinh",
-        "CONST__DoW":                                             "Cyclical7",
-        "CONST__DoY":                                             "Cyclical365",
-        "CONST__Holiday":                                         "None",
-        "FUTU__TemperatureRegionalMean":                          "RobustScaler",
-        "FUTU__TemperatureRegionalSd":                            "RobustScaler",
-        "FUTU__TemperatureRegionalMeanWeightedByPopulation":      "RobustScaler",
-        "FUTU__TemperatureInAreaWithMaxPopulation":               "RobustScaler",
-        "FUTU__PrecipitationsRegionalMean":                       "ArcSinh",
-        "FUTU__PrecipitationsRegionalSd":                         "ArcSinh",
-        "FUTU__PrecipitationsRegionalMeanWeightedByPopulation":   "ArcSinh",
-        "FUTU__PrecipitationsInAreaWithMaxPopulation":            "ArcSinh",
-        "FUTU__LowCloudCoverageRegionalMean":                     "RobustScaler",
-        "FUTU__LowCloudCoverageRegionalSd":                       "RobustScaler",
-        "FUTU__MediumCloudCoverageRegionalMean":                  "RobustScaler",
-        "FUTU__MediumCloudCoverageRegionalSd":                    "RobustScaler",
-        "FUTU__HighCloudCoverageRegionalMean":                    "RobustScaler",
-        "FUTU__HighCloudCoverageRegionalSd":                      "RobustScaler",
-        "FUTU__SolarRadiationRegionalMean":                       "RobustScaler",
-        "FUTU__SolarRadiationRegionalSd":                         "RobustScaler",
+        "CONST__DoW":                                             "StandardScaler",
+        "CONST__DoY":                                             "StandardScaler",
+        "CONST__Holiday":                                         "StandardScaler",
+        "FUTU__TemperatureRegionalMean":                          "StandardScaler",
+        "FUTU__TemperatureRegionalSd":                            "StandardScaler",
+        "FUTU__TemperatureRegionalMeanWeightedByPopulation":      "StandardScaler",
+        "FUTU__TemperatureInAreaWithMaxPopulation":               "StandardScaler",
+        "FUTU__PrecipitationsRegionalMean":                       "StandardScaler",
+        "FUTU__PrecipitationsRegionalSd":                         "StandardScaler",
+        "FUTU__PrecipitationsRegionalMeanWeightedByPopulation":   "StandardScaler",
+        "FUTU__PrecipitationsInAreaWithMaxPopulation":            "StandardScaler",
+        "FUTU__LowCloudCoverageRegionalMean":                     "StandardScaler",
+        "FUTU__LowCloudCoverageRegionalSd":                       "StandardScaler",
+        "FUTU__MediumCloudCoverageRegionalMean":                  "StandardScaler",
+        "FUTU__MediumCloudCoverageRegionalSd":                    "StandardScaler",
+        "FUTU__HighCloudCoverageRegionalMean":                    "StandardScaler",
+        "FUTU__HighCloudCoverageRegionalSd":                      "StandardScaler",
+        "FUTU__SolarRadiationRegionalMean":                       "StandardScaler",
+        "FUTU__SolarRadiationRegionalSd":                         "StandardScaler",
         "FUTU__WindSpeedAt100mRegionalMean":                      "StandardScaler",
         "FUTU__WindSpeedAt100mRegionalSd":                        "StandardScaler",
         "FUTU__WindSpeedAt10mRegionalMean":                       "StandardScaler",
-        "FUTU__WindSpeedAt10mRegionalSd":                         "StandardScaler"
-    }
+        "FUTU__WindSpeedAt10mRegionalSd":                         "StandardScaler",
+        "TARG__NetLoad":                                          "StandardScaler"
+    },
+    "target_method": "StandardScaler"
 
 }

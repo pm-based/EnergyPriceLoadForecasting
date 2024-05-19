@@ -24,6 +24,7 @@ class Preprocessor:
         self.StandardScaler = StandardScaler()
         self.RobustScaler = RobustScaler()
         self.ArcSinh = FunctionTransformer(func=np.arcsinh, inverse_func=np.sinh)
+        self.TargetScaler = None
 
     def load_data(self, df):
         self.data = df
@@ -35,7 +36,7 @@ class Preprocessor:
 
         # NOTE! get pred_horiz from "data_config", in the class it should be self.data_config.pred_horiz
 
-        for feature in self.methods:
+        for feature in self.methods:  # TODO: now it depends on the order of the target method in the json file. Change it so that it is always the last one
             # Get the method to apply to the column
             method = self.methods[feature]
             df_feat = self.data[[feature]]
