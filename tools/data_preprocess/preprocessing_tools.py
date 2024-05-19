@@ -62,11 +62,19 @@ class Preprocessor:
                 self.data[feature + '_cos'] = np.cos(2 * np.pi * df_feat / 365)/2 + 0.5
                 self.data.drop(feature, axis=1, inplace=True)  # Do I need this?
             elif method == 'SSA':
-                ssa = SingularSpectrumAnalysis(window_size=20)
-                np_feat = np.array(df_feat)
-                ssa.fit(np_feat[:-pred_horiz].reshape(1, -1))
-                np_feat_ssa = ssa.transform(np_feat.reshape(1, -1))
-                self.data[feature] = np.sum(np_feat_ssa, axis=1).reshape(-1,1)
+                ssa = SingularSpectrumAnalysis(window_size=150)
+
+                # standar scaler part
+                self.StandardScaler.fit(df_feat[:-pred_horiz])  # Finds the mean and std to the data
+                np_feat_scaled = self.StandardScaler.transform(df_feat)
+
+                #ssa part
+                np_feat_scaled = np.array(np_feat_scaled)
+                ssa.fit(np_feat_scaled[:-pred_horiz].reshape(1, -1))
+                np_feat_ssa = ssa.transform(np_feat_scaled.reshape(1, -1))
+                np_feat_ssa_reconstruct = np.sum(np_feat_ssa, axis=1).reshape(-1,1)
+
+                self.data[feature] = np_feat_ssa_reconstruct
             # Add more methods here
             elif method == 'None':
                 pass
@@ -86,7 +94,7 @@ class Preprocessor:
         elif self.methods[self.target] == 'ArcSinh':
             rescaled_PIs[model_configs['target_quantiles'][i]] = self.ArcSinh.inverse_transform(ens_p[:, i:i + 1])[:, 0]
         elif self.methods[self.target] == 'SSA':
-            rescaled_PIs[model_configs['target_quantiles'][i]] = ens_p[:, 0]  # Not sure if this is correct
+            rescaled_PIs[model_configs['target_quantiles'][i]] = self.StandardScaler.inverse_transform(ens_p[:, i:i + 1])[:, 0] # Not sure if this is correct
         # Add more methods here
         elif self.methods[self.target] == 'None':
             rescaled_PIs[model_configs['target_quantiles'][i]] = ens_p[:, 0]  # Not sure if this is correct
