@@ -7,12 +7,11 @@ import os
 
 
 class ScoreCalculator:
-    def __init__(self, y_true, pred_quantiles, quantiles_levels, quantiles_levels_delta_c, pred_quantiles_delta_c):
+    def __init__(self, y_true, pred_quantiles, quantiles_levels, target_alpha):
         self.y_true = y_true
         self.pred_quantiles = pred_quantiles
-        self.quantiles_levels = quantiles_levels
-        self.quantiles_levels_delta_c = quantiles_levels_delta_c
-        self.pred_quantiles_delta_c = pred_quantiles_delta_c
+        self.quantiles_levels = quantiles_levels #0.05 0.025     0.01 -> 1-0.01/2
+        self.target_alpha = target_alpha
         self.pinball_scores = pd.DataFrame()
         self.winkler_scores = pd.DataFrame()
         self.delta_coverage = pd.DataFrame()
@@ -54,18 +53,26 @@ class ScoreCalculator:
         Utility function to compute the delta coverage on the test results
         return: delta coverage computed for each quantile level between 90% and 99% and each step in the pred horizon
         """
-        EC_alpha = []
-        for i, q in enumerate(self.quantiles_levels_delta_c[:len(self.quantiles_levels_delta_c)]):
-            l_hat = self.pred_quantiles_delta_c[:, :, i]
-            u_hat = self.pred_quantiles_delta_c[:, :, -i-1]
+        delta = []
+        delta_max = []
+        confidence_levels = np.subtract(1, self.target_alpha) # 0.99 0.98 0.97 ... 0.90
+        for i, q in enumerate(self.quantiles_levels[:len(self.quantiles_levels)//2]):
+            l_hat = self.pred_quantiles[:, :, i]
+            u_hat = self.pred_quantiles[:, :, -i-1]
             I_t = (u_hat >= self.y_true) & (l_hat <= self.y_true)
-            EC_alpha_i = np.abs(np.mean(I_t, axis=0) - 100*self.quantiles_levels_delta_c[i])
-            EC_alpha.append(np.expand_dims(EC_alpha_i, -1))
-        score = np.sum(EC_alpha)/(100*(self.quantiles_levels_delta_c[-1] - self.quantiles_levels_delta_c[0]))
+            EC_alpha_i = np.mean(I_t, axis=0)
+            EC_alpha_max = sum(len(riga) for riga in I_t)
+            delta_i = np.abs(EC_alpha_i - 100*confidence_levels[i])
+            delta_i_max = np.abs(EC_alpha_max - 100*confidence_levels[i])
+            delta.append(np.expand_dims(delta_i, -1))
+            delta_max.append(np.expand_dims(delta_i_max, -1))
+        score = np.sum(delta)/(100*(confidence_levels[0] - confidence_levels[-1]))
+        score_max = np.sum(delta_max) / (100 * (confidence_levels[0] - confidence_levels[-1]))
         self.delta_coverage = score
-        return score
+        self.delta_coverage_max = score_max
+        return score, score_max
 
-    def display_scores(self, score_type='pinball', table=True, heatmap=True, summary=True):
+    def display_scores(self, score_type='pinball', table=False, heatmap=False, summary=True):
         """
         Display the scores in a nicely formatted table.
         score_type: 'pinball' or 'winkler'
@@ -76,10 +83,13 @@ class ScoreCalculator:
         elif score_type == 'winkler':
             scores = self.winkler_scores
             x_labels = [1 - 2 * q for q in self.quantiles_levels[:len(self.quantiles_levels) // 2]]
+        elif score_type == 'delta_coverage':
+            scores = self.delta_coverage
+            scores_max = self.delta_coverage_max
         else:
             print("Invalid score type. Choose 'pinball' or 'winkler'.")
             return
-
+        # TODO: add check if is delta cov then table and heatmap are not available
         # Display the scores in a table
         if table:
             print(f'\n{score_type.capitalize()} Scores:\n')
@@ -96,8 +106,13 @@ class ScoreCalculator:
             plt.show()
 
         if summary:
-            print(f'\n{score_type.capitalize()} Summary of scores:\n')
-            print(np.mean(scores))
+            if score_type == 'delta_coverage':
+                print(f'\n{score_type.capitalize()} Delta Coverage: ')
+                print(scores, "/", scores_max)
+
+            else:
+                print(f'\n{score_type.capitalize()} Summary of scores: ')
+                print(np.mean(scores))
 
     def plot_scores_3d(self, score_type='pinball'):
         """

@@ -61,27 +61,27 @@ test_predictions = PrTSF_eng.run_recalibration(model_hyperparams=model_hyperpara
                                                print_weights_stats=print_weights_stats)
 
 #--------------------------------------------------------------------------------------------------------------------
-# Compute pinball score
-quantiles_levels = PrTSF_eng.model_configs['target_quantiles']
-pred_steps = configs['model_config']['pred_horiz']
-
-#--------------------------------------------------------------------------------------------------------------------
 # Plot test predictions
 if plot_quantiles_bool:
     plot_quantiles(test_predictions, target=PF_task_name)
 
-quantiles_levels_delta_c = range(0.90, 0.99, 0.01)
-pred_quantiles_delta_c = test_predictions.loc[:,test_predictions.columns != PF_task_name].to_numpy().reshape(-1, pred_steps, len(quantiles_levels_delta_c))
+pred_steps = configs['model_config']['pred_horiz']
+quantiles_levels = PrTSF_eng.model_configs['target_quantiles']
 
 calculator = ScoreCalculator(y_true=test_predictions[PF_task_name].to_numpy().reshape(-1, pred_steps),
-                             pred_quantiles=test_predictions.loc[:,test_predictions.columns != PF_task_name].
-                             to_numpy().reshape(-1, pred_steps, len(quantiles_levels)), quantiles_levels=quantiles_levels, quantiles_levels_delta_c=quantiles_levels_delta_c, pred_quantiles_delta_c=pred_quantiles_delta_c, alpha=quantiles_levels_delta_c)
+                             pred_quantiles=test_predictions.loc[:,test_predictions.columns != PF_task_name].to_numpy().reshape(-1, pred_steps, len(quantiles_levels)),
+                             quantiles_levels=quantiles_levels,
+                             target_alpha=PrTSF_eng.model_configs['target_alpha'])
+
 
 calculator.compute_pinball_scores()
 calculator.compute_winkler_scores()
+calculator.compute_delta_coverage()
 
 calculator.display_scores(score_type='pinball', table=False, heatmap=True)
 calculator.display_scores(score_type='winkler', table=False, heatmap=True)
+calculator.display_scores(score_type='delta_coverage')
+
 
 calculator.plot_scores_3d(score_type='pinball')
 calculator.plot_scores_3d(score_type='winkler')
