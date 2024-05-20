@@ -15,6 +15,7 @@ import tensorflow_probability as tfp
 from tensorflow_probability import distributions as tfd
 import matplotlib.pyplot as plt
 
+from tools.models.ARIMA import ARIMARegressor
 from tools.models.DNN import DNNRegressor
 from tools.models.ARX import ARXRegressor
 
@@ -27,6 +28,8 @@ def get_model_class_from_conf(conf):
         model_class = ARXRegressor
     elif conf == 'DNN':
         model_class = DNNRegressor
+    elif conf == 'ARIMA':
+        model_class = ARIMARegressor
     else:
         sys.exit('ERROR: unknown model_class')
     return model_class
@@ -95,13 +98,17 @@ class TensorflowRegressor():
             # Build the model architecture
             self.regressor = DNNRegressor(settings, loss)
 
-        elif  settings['model_class']=='ARX':
+        elif settings['model_class']=='ARX':
             # get input size for the chosen model architecture
             settings['input_size']=ARXRegressor.build_model_input_from_series(x=sample_x,
                                                                               col_names=self.x_columns_names,
                                                                               pred_horiz=self.pred_horiz).shape[1]
             # Build the model architecture
             self.regressor = ARXRegressor(settings, loss)
+
+        elif settings['model_class']=='ARIMA':
+            # Build the model architecture
+            self.regressor = ARIMARegressor(settings)
 
         else:
             sys.exit('ERROR: unknown model_class')
