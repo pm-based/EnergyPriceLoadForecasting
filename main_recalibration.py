@@ -70,9 +70,12 @@ pred_steps = configs['model_config']['pred_horiz']
 if plot_quantiles_bool:
     plot_quantiles(test_predictions, target=PF_task_name)
 
+quantiles_levels_delta_c = range(0.90, 0.99, 0.01)
+pred_quantiles_delta_c = test_predictions.loc[:,test_predictions.columns != PF_task_name].to_numpy().reshape(-1, pred_steps, len(quantiles_levels_delta_c))
+
 calculator = ScoreCalculator(y_true=test_predictions[PF_task_name].to_numpy().reshape(-1, pred_steps),
                              pred_quantiles=test_predictions.loc[:,test_predictions.columns != PF_task_name].
-                             to_numpy().reshape(-1, pred_steps, len(quantiles_levels)), quantiles_levels=quantiles_levels)
+                             to_numpy().reshape(-1, pred_steps, len(quantiles_levels)), quantiles_levels=quantiles_levels, quantiles_levels_delta_c=quantiles_levels_delta_c, pred_quantiles_delta_c=pred_quantiles_delta_c, alpha=quantiles_levels_delta_c)
 
 calculator.compute_pinball_scores()
 calculator.compute_winkler_scores()

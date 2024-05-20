@@ -7,12 +7,15 @@ import os
 
 
 class ScoreCalculator:
-    def __init__(self, y_true, pred_quantiles, quantiles_levels):
+    def __init__(self, y_true, pred_quantiles, quantiles_levels, quantiles_levels_delta_c, pred_quantiles_delta_c):
         self.y_true = y_true
         self.pred_quantiles = pred_quantiles
         self.quantiles_levels = quantiles_levels
+        self.quantiles_levels_delta_c = quantiles_levels_delta_c
+        self.pred_quantiles_delta_c = pred_quantiles_delta_c
         self.pinball_scores = pd.DataFrame()
         self.winkler_scores = pd.DataFrame()
+        self.delta_coverage = pd.DataFrame()
 
     def compute_pinball_scores(self):
         """
@@ -44,6 +47,22 @@ class ScoreCalculator:
         score = np.mean(np.concatenate(score, axis=-1), axis=0)
         alpha_levels = [1 - 2 * q for q in self.quantiles_levels[:len(self.quantiles_levels) // 2]]
         self.winkler_scores = pd.DataFrame(score, columns=alpha_levels, index=range(24))
+        return score
+
+    def compute_delta_coverage(self):
+        """
+        Utility function to compute the delta coverage on the test results
+        return: delta coverage computed for each quantile level between 90% and 99% and each step in the pred horizon
+        """
+        EC_alpha = []
+        for i, q in enumerate(self.quantiles_levels_delta_c[:len(self.quantiles_levels_delta_c)]):
+            l_hat = self.pred_quantiles_delta_c[:, :, i]
+            u_hat = self.pred_quantiles_delta_c[:, :, -i-1]
+            I_t = (u_hat >= self.y_true) & (l_hat <= self.y_true)
+            EC_alpha_i = np.abs(np.mean(I_t, axis=0) - 100*self.quantiles_levels_delta_c[i])
+            EC_alpha.append(np.expand_dims(EC_alpha_i, -1))
+        score = np.sum(EC_alpha)/(100*(self.quantiles_levels_delta_c[-1] - self.quantiles_levels_delta_c[0]))
+        self.delta_coverage = score
         return score
 
     def display_scores(self, score_type='pinball', table=True, heatmap=True, summary=True):
