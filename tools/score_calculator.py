@@ -54,23 +54,17 @@ class ScoreCalculator:
         return: delta coverage computed for each quantile level between 90% and 99% and each step in the pred horizon
         """
         delta = []
-        delta_max = []
         confidence_levels = np.subtract(1, self.target_alpha) # 0.99 0.98 0.97 ... 0.90
         for i, q in enumerate(self.quantiles_levels[:len(self.quantiles_levels)//2]):
             l_hat = self.pred_quantiles[:, :, i]
             u_hat = self.pred_quantiles[:, :, -i-1]
             I_t = (u_hat >= self.y_true) & (l_hat <= self.y_true)
-            EC_alpha_i = np.mean(I_t, axis=0)
-            EC_alpha_max = sum(len(riga) for riga in I_t)
-            delta_i = np.abs(EC_alpha_i - 100*confidence_levels[i])
-            delta_i_max = np.abs(EC_alpha_max - 100*confidence_levels[i])
+            EC_alpha_i = np.mean(I_t)
+            delta_i = np.abs(EC_alpha_i - confidence_levels[i])
             delta.append(np.expand_dims(delta_i, -1))
-            delta_max.append(np.expand_dims(delta_i_max, -1))
-        score = np.sum(delta)/(100*(confidence_levels[0] - confidence_levels[-1]))
-        score_max = np.sum(delta_max) / (100 * (confidence_levels[0] - confidence_levels[-1]))
+        score = np.sum(delta)/((confidence_levels[0] - confidence_levels[-1]))
         self.delta_coverage = score
-        self.delta_coverage_max = score_max
-        return score, score_max
+        return score
 
     def display_scores(self, score_type='pinball', table=False, heatmap=False, summary=True):
         """
@@ -85,7 +79,6 @@ class ScoreCalculator:
             x_labels = [1 - 2 * q for q in self.quantiles_levels[:len(self.quantiles_levels) // 2]]
         elif score_type == 'delta_coverage':
             scores = self.delta_coverage
-            scores_max = self.delta_coverage_max
         else:
             print("Invalid score type. Choose 'pinball' or 'winkler'.")
             return
@@ -108,7 +101,7 @@ class ScoreCalculator:
         if summary:
             if score_type == 'delta_coverage':
                 print(f'\n{score_type.capitalize()} Delta Coverage: ')
-                print(scores, "/", scores_max)
+                print(scores)
 
             else:
                 print(f'\n{score_type.capitalize()} Summary of scores: ')
