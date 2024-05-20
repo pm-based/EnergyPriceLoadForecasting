@@ -497,7 +497,7 @@ class PrTsfRecalibEngine:
         if optuna_m == 'grid_search':
             search_space = self.model_class.get_hyperparams_searchspace()
             sampler = optuna.samplers.GridSampler(search_space)
-            pruner = None
+            pruner = optuna.pruners.HyperbandPruner
         elif optuna_m == 'random':
             sampler = optuna.samplers.RandomSampler()
             pruner = optuna.pruners.MedianPruner(n_startup_trials=10, n_warmup_steps=5)

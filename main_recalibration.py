@@ -24,9 +24,9 @@ exper_setup = 'JSU-DNN'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
-run_id = 'benchmark'
+run_id = 'LSTM'
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
-hyper_mode = 'load_tuned'
+hyper_mode = 'optuna_tuner'
 # Set the path to the preprocessing configs file
 preprocessing = 'preprocess_configs.json'
 # Plot train history flag
