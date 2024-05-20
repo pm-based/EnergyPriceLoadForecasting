@@ -97,7 +97,7 @@ class Preprocessor:
             rescaled_PIs[model_configs['target_quantiles'][i]] = self.StandardScaler.inverse_transform(ens_p[:, i:i + 1])[:, 0] # Not sure if this is correct
         # Add more methods here
         elif self.methods[self.target] == 'None':
-            rescaled_PIs[model_configs['target_quantiles'][i]] = ens_p[:, 0]  # Not sure if this is correct
+            rescaled_PIs[model_configs['target_quantiles'][i]] = ens_p[:, i]  # Not sure if this is correct
         else:
             print('ERROR: Inverse target transformation method not found')
 
