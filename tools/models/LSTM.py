@@ -21,13 +21,13 @@ class LSTMRegressor:
     def __init__(self, settings, loss):
         self.settings = settings
         self.__build_model__(loss)
-        # TODO: delete the prints as soon as you find out the problem
+        # TODO: delete the prints as soon as you find out the problem. Problem with input dimensions
         # the problem is that it prints only 'hidden_size' and 'lr'. The other hyperparams are not printed
         print('!!!! LSTM hyperparams: ', self.settings)
 
     def __build_model__(self, loss):
         print('building the LSTM model...')
-        x_in = tf.keras.layers.Input(shape=(self.settings['input_size'],))
+        x_in = tf.keras.layers.Input(shape=(1, self.settings['input_size'],))
         x = tf.keras.layers.BatchNormalization()(x_in)
         for LSTM_layer in range(self.settings['n_LSTM_layers']):
             x = tf.keras.layers.LSTM(self.settings['LSTM_size'])(x)
@@ -152,8 +152,9 @@ class LSTMRegressor:
         # build conditioning variables for cal features
         c_feat = [x[:, -pred_horiz:-pred_horiz + 1, feat_idx] for feat_idx in const_col_idxs]
 
+        input_size = np.concatenate(past_feat + futu_feat + c_feat, axis=1)#.reshape((1, 1, -1))
         # return flattened input
-        return np.concatenate(past_feat + futu_feat + c_feat, axis=1)
+        return input_size
 
     # TODO: write the search space in exper_configs.json
 
@@ -173,8 +174,8 @@ class LSTMRegressor:
         print('LSTM getting hyperparams grid search space')
         return {'LSTM_size': [32*num for num in range(1, 10)],
                 'hidden_size': [32*num for num in range(1, 10)],
-                'n_LSTM_layers': [1],
-                'n_hidden_layers': [2],
+                'n_LSTM_layers': [1],  # [1, 2]
+                'n_hidden_layers': [2],  # [1, 2, 3]
                 'lr': [1e-4],  # [5*(10**(-e)) for e in range(3, 5)],
                 'activation': ['softplus', 'elu']}
 

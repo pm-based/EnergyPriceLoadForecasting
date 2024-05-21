@@ -108,7 +108,7 @@ class TensorflowRegressor():
 
         elif  settings['model_class']=='LSTM':
             # get input size for the chosen model architecture
-            settings['input_size']=LSTMRegressor.build_model_input_from_series(x=sample_x,
+            settings['input_size'] = LSTMRegressor.build_model_input_from_series(x=sample_x,
                                                                               col_names=self.x_columns_names,
                                                                               pred_horiz=self.pred_horiz).shape[1]
             # Build the model architecture
