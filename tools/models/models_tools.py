@@ -108,7 +108,7 @@ class TensorflowRegressor():
 
         elif settings['model_class']=='ARIMA':
             # Build the model architecture
-            self.regressor = ARIMARegressor(settings)
+            self.regressor = ARIMARegressor(settings, loss)
 
         else:
             sys.exit('ERROR: unknown model_class')
