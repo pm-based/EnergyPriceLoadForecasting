@@ -25,12 +25,15 @@ class DNNRegressor:
     def __build_model__(self, loss):
         x_in = tf.keras.layers.Input(shape=(self.settings['input_size'],))
         x_in = tf.keras.layers.BatchNormalization()(x_in)
+        x_in = tf.keras.layers.GaussianNoise(self.settings['GaussianNoise'])(x_in)
         x = (tf.keras.layers.Dense(self.settings['hidden_size'],
                                   activation=self.settings['activation'],
                                   )(x_in))
         for hl in range(self.settings['n_hidden_layers'] - 1):
             x = tf.keras.layers.Dense(self.settings['hidden_size'],
                                         activation=self.settings['activation'],
+                                      kernel_regularizer=tf.keras.regularizers.l1_l2(l1=self.settings['l1'],
+                                                                                     l2=self.settings['l2'])
                                         )(x)
         if self.settings['PF_method'] == 'point':
             out_size = 1
@@ -158,6 +161,9 @@ class DNNRegressor:
         settings['n_hidden_layers'] = 2  # trial.suggest_int('n_hidden_layers', 1, 3)
         settings['lr'] = trial.suggest_float('lr', 1e-5, 1e-1, log=True)
         settings['activation'] = 'softplus'
+        settings['l1'] = trial.suggest_float('lr', 1e-7, 1e-4, log=True)
+        settings['l2'] = trial.suggest_float('lr', 1e-7, 1e-4, log=True)
+        settings['GaussianNoise'] = trial.suggest_float('lr', 1e-2, 1e2)
         return settings
 
     @staticmethod
@@ -171,7 +177,10 @@ class DNNRegressor:
             'hidden_size': configs['hidden_size'],
             'n_hidden_layers': configs['n_hidden_layers'],
             'lr': configs['lr'],
-            'activation': configs['activation']
+            'activation': configs['activation'],
+            'l1': configs['l1'],
+            'l2': configs['l2'],
+            'GaussianNoise': configs['GaussianNoise']
         }
         return model_hyperparams
 

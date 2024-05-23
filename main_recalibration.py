@@ -24,7 +24,7 @@ exper_setup = 'JSU-DNN'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
-run_id = 'benchmark'
+run_id = 'reduceOverfit'
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
 hyper_mode = 'load_tuned'
 # Set the path to the preprocessing configs file

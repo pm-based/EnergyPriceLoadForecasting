@@ -1,0 +1,3 @@
+{"hidden_size": 384, "n_hidden_layers": 3, "lr": 0.0005759384149696579, "activation": "softplus", "l1": 1e-05, "l2": 1e-05,
+  "GaussianNoise": 0.1
+}
