@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 from tools.models.ARIMA import ARIMARegressor
 from tools.models.DNN import DNNRegressor
 from tools.models.ARX import ARXRegressor
-
+from tools.models.ARIMA2 import ARIMARegressor2
 
 def get_model_class_from_conf(conf):
     """
@@ -107,8 +107,14 @@ class TensorflowRegressor():
             self.regressor = ARXRegressor(settings, loss)
 
         elif settings['model_class']=='ARIMA':
+            settings['input_size']=ARIMARegressor.build_model_input_from_series(x=sample_x,col_names=self.x_columns_names,pred_horiz=self.pred_horiz).shape[1]
             # Build the model architecture
             self.regressor = ARIMARegressor(settings, loss)
+
+        elif settings['model_class']=='ARIMA2':
+            # No need to set 'input_size' for ARIMA
+            # Initialize the ARIMA model
+            self.regressor = ARIMARegressor2(settings, loss)
 
         else:
             sys.exit('ERROR: unknown model_class')
