@@ -3,6 +3,8 @@ import json
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MaxAbsScaler
 from pyts.decomposition import SingularSpectrumAnalysis
 import numpy as np
 
@@ -25,6 +27,9 @@ class Preprocessor:
         self.StandardScaler = StandardScaler()
         self.RobustScaler = RobustScaler()
         self.ArcSinh = FunctionTransformer(func=np.arcsinh, inverse_func=np.sinh)
+        self.MinMaxScaler = MinMaxScaler()
+        self.MaxAbsScaler = MaxAbsScaler()
+        self.Log1p = FunctionTransformer(func=np.log1p, inverse_func=np.expm1)
         self.TargetScaler = None
 
     def load_data(self, df):
@@ -36,6 +41,9 @@ class Preprocessor:
     def preprocess_data(self, pred_horiz):
 
         # NOTE! get pred_horiz from "data_config", in the class it should be self.data_config.pred_horiz
+
+        # put the target column at the end of the methods dictionary
+        self.methods[self.target] = self.methods.pop(self.target)
 
         for feature in self.methods:  # TODO: now it depends on the order of the target method in the json file. Change it so that it is always the last one
             # Get the method to apply to the column
@@ -53,6 +61,22 @@ class Preprocessor:
                 self.ArcSinh.fit(df_feat[:-pred_horiz])
                 np_feat_scaled = self.ArcSinh.transform(df_feat)
                 self.data[feature] = np_feat_scaled
+            elif method == 'MinMaxScaler':
+                self.MinMaxScaler.fit(df_feat[:-pred_horiz])
+                np_feat_scaled = self.MinMaxScaler.transform(df_feat)
+                self.data[feature] = np_feat_scaled
+            elif method == 'MaxAbsScaler':
+                self.MaxAbsScaler.fit(df_feat[:-pred_horiz])
+                np_feat_scaled = self.MaxAbsScaler.transform(df_feat)
+                self.data[feature] = np_feat_scaled
+            elif method == 'Log1p':
+                self.Log1p.fit(df_feat[:-pred_horiz])
+                np_feat_scaled = self.Log1p.transform(df_feat)
+                self.data[feature] = np_feat_scaled
+            elif method == 'Cyclical24':
+                self.data[feature + '_sin'] = np.sin(2 * np.pi * df_feat / 24)/2 + 0.5
+                self.data[feature + '_cos'] = np.cos(2 * np.pi * df_feat / 24)/2 + 0.5
+                self.data.drop(feature, axis=1, inplace=True)
             elif method == 'Cyclical7':
                 self.data[feature + '_sin'] = np.sin(2 * np.pi * df_feat / 7)/2 + 0.5
                 self.data[feature + '_cos'] = np.cos(2 * np.pi * df_feat / 7)/2 + 0.5
@@ -62,7 +86,7 @@ class Preprocessor:
                 self.data[feature + '_cos'] = np.cos(2 * np.pi * df_feat / 365)/2 + 0.5
                 self.data.drop(feature, axis=1, inplace=True)  # Do I need this?
             elif method == 'SSA':
-                ssa = SingularSpectrumAnalysis(window_size=10)
+                ssa = SingularSpectrumAnalysis(window_size=150)
 
                 # standar scaler part
                 self.StandardScaler.fit(df_feat[:-pred_horiz])  # Finds the mean and std to the data
@@ -89,11 +113,8 @@ class Preprocessor:
                 np_feat_ssa = ssa.transform(np_feat_scaled.reshape(1, -1))
                 #np_feat_ssa_reconstruct = np.sum(np_feat_ssa, axis=1).reshape(-1, 1)
 
-                self.data["SSA_0"] = np_feat_ssa[:,0,:].reshape(-1, 1)
-                self.data["SSA_1"] = np_feat_ssa[:,1,:].reshape(-1, 1)
-                self.data["SSA_2"] = np_feat_ssa[:,2,:].reshape(-1, 1)
-                self.data["SSA_3"] = np_feat_ssa[:,3,:].reshape(-1, 1)
-                self.data["SSA_4"] = np_feat_ssa[:,4,:].reshape(-1, 1)
+                for n in range(5):
+                    self.data[feature + '_SSA_' + str(n)] = np_feat_ssa[:, n, :].reshape(-1, 1)
             # Add more methods here
             elif method == 'None':
                 pass
@@ -112,6 +133,12 @@ class Preprocessor:
             rescaled_PIs[model_configs['target_quantiles'][i]] = self.RobustScaler.inverse_transform(ens_p[:, i:i + 1])[:, 0]
         elif self.methods[self.target] == 'ArcSinh':
             rescaled_PIs[model_configs['target_quantiles'][i]] = self.ArcSinh.inverse_transform(ens_p[:, i:i + 1])[:, 0]
+        elif self.methods[self.target] == 'MinMaxScaler':
+            rescaled_PIs[model_configs['target_quantiles'][i]] = self.MinMaxScaler.inverse_transform(ens_p[:, i:i + 1])[:, 0]
+        elif self.methods[self.target] == 'MaxAbsScaler':
+            rescaled_PIs[model_configs['target_quantiles'][i]] = self.MaxAbsScaler.inverse_transform(ens_p[:, i:i + 1])[:, 0]
+        elif self.methods[self.target] == 'Log1p':
+            rescaled_PIs[model_configs['target_quantiles'][i]] = self.Log1p.inverse_transform(ens_p[:, i:i + 1])[:, 0]
         elif self.methods[self.target] == 'SSA':
             rescaled_PIs[model_configs['target_quantiles'][i]] = self.StandardScaler.inverse_transform(ens_p[:, i:i + 1])[:, 0]
         elif self.methods[self.target] == 'SSA_decomp':
