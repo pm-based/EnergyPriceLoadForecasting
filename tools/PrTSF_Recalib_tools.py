@@ -507,7 +507,8 @@ class PrTsfRecalibEngine:
         # Unique identifier of the study.
         study_name = (self.data_configs.task_name
                       + self.model_configs['model_class'] + '-'
-                      + self.model_configs['PF_method']
+                      + self.model_configs['PF_method'] + '_'
+                      + self.model_configs['run_id']
                       + '-' + optuna_m)
         storage_name = "sqlite:///db.sqlite3"
 
