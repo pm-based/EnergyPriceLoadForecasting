@@ -157,13 +157,13 @@ class DNNRegressor:
 
     @staticmethod
     def get_hyperparams_trial(trial, settings):
-        settings['hidden_size'] = trial.suggest_int('hidden_size', 64, 960, step=64)
-        settings['n_hidden_layers'] = 2  # trial.suggest_int('n_hidden_layers', 1, 3)
-        settings['lr'] = trial.suggest_float('lr', 1e-5, 1e-1, log=True)
+        settings['hidden_size'] = 384 #trial.suggest_int('hidden_size', 64, 960, step=64)
+        settings['n_hidden_layers'] = 3 # trial.suggest_int('n_hidden_layers', 1, 3)
+        settings['lr'] = 0.000575 #trial.suggest_float('lr', 1e-5, 1e-1, log=True)
         settings['activation'] = 'softplus'
-        settings['l1'] = trial.suggest_float('lr', 1e-7, 1e-4, log=True)
-        settings['l2'] = trial.suggest_float('lr', 1e-7, 1e-4, log=True)
-        settings['GaussianNoise'] = trial.suggest_float('lr', 1e-2, 1e2)
+        settings['l1'] = trial.suggest_float('l1', 1e-7, 1e-4, log=True)
+        settings['l2'] = trial.suggest_float('l2', 1e-7, 1e-4, log=True)
+        settings['GaussianNoise'] = trial.suggest_float('GaussianNoise', 1e-2, 0.2)
         return settings
 
     @staticmethod

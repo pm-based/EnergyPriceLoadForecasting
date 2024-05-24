@@ -13,8 +13,8 @@
         },
         "idx_end_oos_preds": {
             "y": 2017,
-            "m": 1,
-            "d": 10
+            "m": 2,
+            "d": 1
         },
         "keep_past_train_samples": false,
         "steps_lag_win": 7,
@@ -42,6 +42,6 @@
         "max_epochs": 800,
         "batch_size": 7,
         "patience": 20,
-        "num_ense": 1
+        "num_ense": 5
     }
 }
