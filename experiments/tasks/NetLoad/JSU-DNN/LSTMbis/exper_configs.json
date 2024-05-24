@@ -1,0 +1,55 @@
+{
+    "data_config": {
+        "dataset_name": "LF_bench_0.csv",
+        "idx_start_train": {
+            "y": 2014,
+            "m": 1,
+            "d": 2
+        },
+        "idx_start_oos_preds": {
+            "y": 2017,
+            "m": 1,
+            "d": 1
+        },
+        "idx_end_oos_preds": {
+            "y": 2017,
+            "m": 1,
+            "d": 1
+        },
+        "keep_past_train_samples": false,
+        "steps_lag_win": 72,
+        "pred_horiz": 24,
+        "preprocess": "StandardScaler",
+        "shuffle_mode": "none",
+        "num_vali_samples": 100
+    },
+    "model_config": {
+        "PF_method": "JSU",
+        "model_class": "LSTMbis",
+        "optuna_m": "random",
+        "model_search_space": {
+            "LSTM_size": [],
+            "hidden_size": [],
+            "n_LSTM_layers": [],
+            "n_hidden_layers": [],
+            "lr": [],
+            "activation": []
+        },
+        "target_alpha": [
+            0.01,
+            0.02,
+            0.03,
+            0.04,
+            0.05,
+            0.06,
+            0.07,
+            0.08,
+            0.09,
+            0.10            
+        ],
+        "max_epochs": 800,
+        "batch_size": 7,
+        "patience": 15,
+        "num_ense": 1
+    }
+}
