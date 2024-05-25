@@ -25,7 +25,7 @@ class LSTMbisRegressor:
     def __build_model__(self, loss):
         x_in = tf.keras.layers.Input(shape=self.settings['input_size'])
         x_in = tf.keras.layers.BatchNormalization()(x_in)
-        x = tf.keras.layers.LSTM(256, return_sequences=True)(x_in)
+        x = tf.keras.layers.LSTM(64, return_sequences=False)(x_in)
         x = tf.keras.layers.Dense(self.settings['hidden_size'],
                                         activation=self.settings['activation'],
                                         )(x)

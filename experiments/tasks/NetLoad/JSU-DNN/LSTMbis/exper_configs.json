@@ -17,7 +17,7 @@
             "d": 1
         },
         "keep_past_train_samples": false,
-        "steps_lag_win": 72,
+        "steps_lag_win": 7,
         "pred_horiz": 24,
         "preprocess": "StandardScaler",
         "shuffle_mode": "none",
@@ -47,7 +47,7 @@
             0.09,
             0.10            
         ],
-        "max_epochs": 800,
+        "max_epochs": 30,
         "batch_size": 7,
         "patience": 15,
         "num_ense": 1
