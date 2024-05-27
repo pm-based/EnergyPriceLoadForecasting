@@ -19,6 +19,7 @@ from tools.models.ARIMA import ARIMARegressor
 from tools.models.DNN import DNNRegressor
 from tools.models.ARX import ARXRegressor
 from tools.models.ARIMA2 import ARIMARegressor2
+from tools.models.SARIMAX import SARIMAXRegressor
 
 def get_model_class_from_conf(conf):
     """
@@ -30,6 +31,10 @@ def get_model_class_from_conf(conf):
         model_class = DNNRegressor
     elif conf == 'ARIMA':
         model_class = ARIMARegressor
+    elif conf == 'ARIMA2':
+        model_class = ARIMARegressor2
+    elif conf == 'SARIMAX':
+        model_class = SARIMAXRegressor
     else:
         sys.exit('ERROR: unknown model_class')
     return model_class
@@ -116,6 +121,9 @@ class TensorflowRegressor():
             # Initialize the ARIMA model
             self.regressor = ARIMARegressor2(settings, loss)
 
+        elif settings['model_class']=='SARIMAX':
+            self.regressor = SARIMAXRegressor(self.settings, self.loss)
+
         else:
             sys.exit('ERROR: unknown model_class')
 
@@ -131,7 +139,11 @@ class TensorflowRegressor():
         return self.output_handler(self.regressor.predict(x))
 
     def fit(self, train_x, train_y, val_x, val_y, verbose=0, pruning_call=None, plot_history=False):
-        history = self.regressor.fit(train_x, train_y, val_x, val_y, verbose=0, pruning_call=None)
+        if self.settings['model_class'] == 'ARIMA2':
+            history = self.regressor.fit(train_y)
+        #elif self.settings['model_class'] == 'SARIMAX':
+         #   history = self.regressor.fit(train_y, train_x, verbose=verbose)
+        else: history = self.regressor.fit(train_x, train_y, val_x, val_y, verbose=0, pruning_call=None)
         if plot_history:
             plt.plot(history.history['loss'], label='train_loss')
             plt.plot(history.history['val_loss'], label='vali_loss')

@@ -13,8 +13,7 @@ class ARIMARegressor2:
         self.loss = loss
         self.model = None
 
-    def fit(self, train_y):
-        # Train the ARIMA model
+    def fit(self, train_y, verbose=0):
         self.model = ARIMA(train_y, order=(self.settings['p'], self.settings['d'], self.settings['q']))
         self.fitted_model = self.model.fit()
 

@@ -20,13 +20,13 @@ from tools.score_calculator import ScoreCalculator
 # Set PEPF task to execute
 PF_task_name = 'NetLoad'
 # Set Model setup to execute: point_ARX, point-DNN, QR-DNN, N-DNN
-exper_setup = 'JSU-DNN'
+exper_setup = 'point-SARIMAX'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
-run_id = 'benchmark'
+run_id = 'recalib_opt_grid_1_1'
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
-hyper_mode = 'load_tuned'
+hyper_mode = 'optuna_tuner'
 # Plot train history flag
 plot_train_history = False
 plot_weights = False
