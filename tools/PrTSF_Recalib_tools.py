@@ -564,7 +564,7 @@ class PrTsfRecalibEngine:
         else:
             sys.exit('ERROR: uknown hyperparam method')
 
-    def run_recalibration(self, model_hyperparams:Dict, plot_history=False, plot_weights=False, print_weights_stats=False, recalibFreq = 1):
+    def run_recalibration(self, model_hyperparams:Dict, plot_history=False, plot_weights=False, print_weights_stats=False, recalibFreq = 1, loadWeigts = False):
         """
         Main recalibration loop
         """
@@ -573,7 +573,10 @@ class PrTsfRecalibEngine:
         print('------------------------------------------------------------------------------')
 
         # recalib counter
-        time_to_recalib = 0
+        if loadWeigts:
+            time_to_recalib = -1 #TODO: add a control to check if exist saved weigths.
+        else:
+            time_to_recalib = 0
         saved_weigths_path = os.path.join(self.get_exper_path(), 'models_weights')
 
         # Crea il percorso se non esiste già
