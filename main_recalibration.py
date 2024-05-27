@@ -58,7 +58,8 @@ model_hyperparams = PrTSF_eng.get_model_hyperparams(method=hyper_mode, optuna_m=
 test_predictions = PrTSF_eng.run_recalibration(model_hyperparams=model_hyperparams,
                                                plot_history=plot_train_history,
                                                plot_weights=plot_weights,
-                                               print_weights_stats=print_weights_stats)
+                                               print_weights_stats=print_weights_stats,
+                                               recalibFreq = 1)
 
 #--------------------------------------------------------------------------------------------------------------------
 # Plot test predictions

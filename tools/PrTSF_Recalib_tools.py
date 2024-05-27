@@ -564,13 +564,21 @@ class PrTsfRecalibEngine:
         else:
             sys.exit('ERROR: uknown hyperparam method')
 
-    def run_recalibration(self, model_hyperparams:Dict, plot_history=False, plot_weights=False, print_weights_stats=False):
+    def run_recalibration(self, model_hyperparams:Dict, plot_history=False, plot_weights=False, print_weights_stats=False, recalibFreq = 1):
         """
         Main recalibration loop
         """
         print('------------------------------------------------------------------------------')
         print('Starting recalibration of config: ' + str(self.model_configs['PF_method']))
         print('------------------------------------------------------------------------------')
+
+        # recalib counter
+        time_to_recalib = 100
+        saved_weigths_path = os.path.join(self.get_exper_path(), 'models_weights')
+
+        # Crea il percorso se non esiste già
+        if not os.path.exists(saved_weigths_path):
+            os.makedirs(saved_weigths_path)
 
         # List to store results over recalibration
         ensem_test_PIs=[]
@@ -604,11 +612,17 @@ class PrTsfRecalibEngine:
                 tf.keras.backend.clear_session()
                 model = regression_model(settings=settings,
                                          sample_x=rec_samples.x_test)
-
-                model.fit(train_x=rec_block.x_train, train_y=rec_block.y_train,
-                          val_x=rec_block.x_vali, val_y=rec_block.y_vali,
-                          plot_history=plot_history
-                          )
+                weights_file_name = 'model_weights_' + str(e) + '.h5'
+                if (time_to_recalib == 0):
+                    model.fit(train_x=rec_block.x_train, train_y=rec_block.y_train,
+                              val_x=rec_block.x_vali, val_y=rec_block.y_vali,
+                              plot_history=plot_history
+                              )
+                    model.save_weights(os.path.join(saved_weigths_path,weights_file_name))
+                    time_to_recalib = recalibFreq-1
+                else:
+                    model.load_weights(os.path.join(saved_weigths_path,weights_file_name))
+                    time_to_recalib = time_to_recalib-1
 
                 # Store ensemble component prediction on test sample
                 preds_test_e.append(model.predict(rec_samples.x_test))

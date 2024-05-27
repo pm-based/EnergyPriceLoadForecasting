@@ -128,6 +128,12 @@ class DNNRegressor:
                                                pred_horiz=self.settings['pred_horiz'])
         return self.model.evaluate(x=x, y=y)
 
+    def save_weights(self,path):
+        return self.model.save_weights(path)
+
+    def load_weights(self,path):
+        return self.model.load_weights(path)
+
     @staticmethod
     def build_model_input_from_series(x, col_names: List, pred_horiz: int):
         # get index of target and past features
