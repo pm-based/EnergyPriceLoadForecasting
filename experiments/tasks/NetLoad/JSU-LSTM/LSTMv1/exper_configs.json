@@ -17,11 +17,11 @@
             "d": 1
         },
         "keep_past_train_samples": false,
-        "steps_lag_win": 7,
+        "steps_lag_win": 1,
         "pred_horiz": 24,
         "preprocess": "StandardScaler",
         "shuffle_mode": "none",
-        "num_vali_samples": 100
+        "num_vali_samples": 150
     },
     "model_config": {
         "PF_method": "JSU",
@@ -40,8 +40,8 @@
             0.10            
         ],
         "max_epochs": 250,
-        "batch_size": 16,
-        "patience": 15,
-        "num_ense": 1
+        "batch_size": 32,
+        "patience": 35,
+        "num_ense": 5
     }
 }
