@@ -156,9 +156,3 @@ class LSTMRegressor:
             'l2': configs['l2'],
         }
         return model_hyperparams
-
-    def plot_weights(self):
-        w_b = self.model.layers[1].get_weights()
-        plt.imshow(w_b[0].T)
-        plt.title('DNN input weights')
-        plt.show()
