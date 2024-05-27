@@ -60,7 +60,7 @@ test_predictions = PrTSF_eng.run_recalibration(model_hyperparams=model_hyperpara
                                                plot_weights=plot_weights,
                                                print_weights_stats=print_weights_stats,
                                                recalibFreq=35,
-                                               loadWeigts=True)
+                                               loadWeigts=False)
 
 #--------------------------------------------------------------------------------------------------------------------
 # Plot test predictions
