@@ -20,11 +20,11 @@ from tools.score_calculator import ScoreCalculator
 # Set PEPF task to execute
 PF_task_name = 'NetLoad'
 # Set Model setup to execute: point_ARX, point-DNN, QR-DNN, N-DNN
-exper_setup = 'JSU-DNN'
+exper_setup = 'JSU-LSTM'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
-run_id = 'benchmark'
+run_id = 'LSTMv1'
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
 hyper_mode = 'load_tuned'
 # Set the path to the preprocessing configs file
@@ -59,7 +59,7 @@ test_predictions = PrTSF_eng.run_recalibration(model_hyperparams=model_hyperpara
                                                plot_history=plot_train_history,
                                                plot_weights=plot_weights,
                                                print_weights_stats=print_weights_stats,
-                                               recalibFreq = 1)
+                                               recalibFreq = 1000)
 
 #--------------------------------------------------------------------------------------------------------------------
 # Plot test predictions
