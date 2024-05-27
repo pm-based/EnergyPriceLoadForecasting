@@ -31,7 +31,8 @@ class LSTMRegressor:
                                   )(x_in))
         x = (tf.keras.layers.LSTM(128,
                                   return_sequences=False,
-                                 # activation=self.settings['activation'],
+                                  kernel_regularizer=tf.keras.regularizers.l1_l2(l1=self.settings['l1'],
+                                                                                 l2=self.settings['l2']),
                                   )(x))
         if self.settings['PF_method'] == 'point':
             out_size = 1
@@ -127,9 +128,12 @@ class LSTMRegressor:
     @staticmethod
     def get_hyperparams_trial(trial, settings):
         settings['hidden_size'] = trial.suggest_int('hidden_size', 64, 960, step=64)
-        settings['n_hidden_layers'] = 2  # trial.suggest_int('n_hidden_layers', 1, 3)
+        settings['n_hidden_LSTM_layers'] = 2  # trial.suggest_int('n_hidden_layers', 1, 3)
         settings['lr'] = trial.suggest_float('lr', 1e-5, 1e-1, log=True)
-        settings['activation'] = 'softplus'
+        settings['activation'] = 'softplus',
+        settings['l1'] = trial.suggest_float('l1', 1e-7, 1e-3, log=True)
+        settings['l2'] = trial.suggest_float('l2', 1e-7, 1e-3, log=True)
+
         return settings
 
     @staticmethod
@@ -141,9 +145,11 @@ class LSTMRegressor:
     def get_hyperparams_dict_from_configs(configs): # takes params from config file
         model_hyperparams = {
             'hidden_size': configs['hidden_size'],
-            'n_hidden_layers': configs['n_hidden_layers'],
+            'n_hidden_LSTM_layers': configs['n_hidden_LSTM_layers'],
             'lr': configs['lr'],
-            'activation': configs['activation']
+            'activation': configs['activation'],
+            'l1': configs['l1'],
+            'l2': configs['l2'],
         }
         return model_hyperparams
 
