@@ -129,6 +129,12 @@ class TensorflowRegressor():
     def evaluate(self, x, y):
         return self.regressor.evaluate(x=x, y=y)
 
+    def save_weights(self,path):
+        return self.regressor.save_weights(path=path)
+
+    def load_weights(self,path):
+        return self.regressor.load_weights(path=path)
+
     def plot_weights(self):
         self.regressor.plot_weights()
 
