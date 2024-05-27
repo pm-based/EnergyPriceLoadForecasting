@@ -8,18 +8,26 @@ class SARIMAXRegressor:
         self.loss = loss
         self.model = None
 
-    def fit(self, train_y, train_x=None, verbose=0):
-        self.model = sm.tsa.SARIMAX(train_y, exog=train_x,
+    def fit(self, train_x, train_y, val_x, val_y, verbose=0, pruning_call=None):
+        endog = train_x[:, 2]
+        exog = train_x[:, 3:len(train_x[0])]
+        if exog is not None:
+            exog = np.asarray(exog)
+            if exog.ndim == 1:
+                exog = exog.reshape(-1, 1)
+        seasonal_order = (self.settings.get('P', 0), self.settings.get('D', 0), self.settings.get('Q', 0), self.settings.get('S', 0))
+        self.model = sm.tsa.SARIMAX(endog, exog,
                                      order=(self.settings['p'], self.settings['d'], self.settings['q']),
-                                     seasonal_order=(self.settings.get('P', 0),
-                                                     self.settings.get('D', 0),
-                                                     self.settings.get('Q', 0),
-                                                     self.settings.get('S', 0)))
+                                     seasonal_order=seasonal_order,)
         self.fitted_model = self.model.fit(disp=verbose)
 
     def predict(self, steps, exog=None):
         if not self.fitted_model:
             raise ValueError("Model has not been fitted yet. Please call 'fit' first.")
+        if exog is not None:
+            exog = np.asarray(exog)
+            if exog.ndim == 1:
+                exog = exog.reshape(-1, 1)
         return self.fitted_model.forecast(steps=steps, exog=exog)
 
     def evaluate(self, y_true, exog=None):

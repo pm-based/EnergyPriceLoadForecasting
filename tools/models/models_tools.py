@@ -20,6 +20,7 @@ from tools.models.DNN import DNNRegressor
 from tools.models.ARX import ARXRegressor
 from tools.models.ARIMA2 import ARIMARegressor2
 from tools.models.SARIMAX import SARIMAXRegressor
+from tools.models.SARIMAXmultivariate import SARIMAXmultivariateRegressor
 
 def get_model_class_from_conf(conf):
     """
@@ -35,6 +36,8 @@ def get_model_class_from_conf(conf):
         model_class = ARIMARegressor2
     elif conf == 'SARIMAX':
         model_class = SARIMAXRegressor
+    elif conf == 'SARIMAXmultivariate':
+        model_class = SARIMAXmultivariateRegressor
     else:
         sys.exit('ERROR: unknown model_class')
     return model_class
@@ -77,6 +80,7 @@ class TensorflowRegressor():
     Implementation of the Tenforflow regressor
     """
     def __init__(self, settings, sample_x):
+        self.loss = None
         self.settings = settings
         self.x_columns_names = settings['x_columns_names']
         self.pred_horiz = settings['pred_horiz']
@@ -123,6 +127,9 @@ class TensorflowRegressor():
 
         elif settings['model_class']=='SARIMAX':
             self.regressor = SARIMAXRegressor(self.settings, self.loss)
+
+        elif settings['model_class'] == 'SARIMAXmultivariate':
+            self.regressor = SARIMAXmultivariateRegressor(self.settings, self.loss)
 
         else:
             sys.exit('ERROR: unknown model_class')

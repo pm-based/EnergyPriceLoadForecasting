@@ -25,7 +25,7 @@
     },
     "model_config": {
         "PF_method": "point",
-        "model_class": "ARIMA2",
+        "model_class": "SARIMAX",
         "optuna_m": "grid_search",
         "target_alpha": [],
         "p": 2,
