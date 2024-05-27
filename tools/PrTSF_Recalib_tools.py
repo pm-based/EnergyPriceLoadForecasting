@@ -573,7 +573,7 @@ class PrTsfRecalibEngine:
         print('------------------------------------------------------------------------------')
 
         # recalib counter
-        time_to_recalib = 100
+        time_to_recalib = 0
         saved_weigths_path = os.path.join(self.get_exper_path(), 'models_weights')
 
         # Crea il percorso se non esiste già
@@ -619,10 +619,10 @@ class PrTsfRecalibEngine:
                               plot_history=plot_history
                               )
                     model.save_weights(os.path.join(saved_weigths_path,weights_file_name))
-                    time_to_recalib = recalibFreq-1
+                    if (e == settings['num_ense']-1): time_to_recalib = recalibFreq-1
                 else:
                     model.load_weights(os.path.join(saved_weigths_path,weights_file_name))
-                    time_to_recalib = time_to_recalib-1
+                    if (e == settings['num_ense']-1): time_to_recalib = time_to_recalib-1
 
                 # Store ensemble component prediction on test sample
                 preds_test_e.append(model.predict(rec_samples.x_test))
