@@ -30,7 +30,7 @@ class LSTMRegressor:
                                      activation=self.settings['activation'],
                                      kernel_regularizer=tf.keras.regularizers.l1_l2(l1=self.settings['l1'],
                                                                                     l2=self.settings['l2']),
-                                     return_sequences=False,
+                                     return_sequences=True,
                                     )(x)
         x = (tf.keras.layers.LSTM(128,
                                   activation=self.settings['activation'],
