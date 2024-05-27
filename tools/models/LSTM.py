@@ -24,12 +24,16 @@ class LSTMRegressor:
 
     def __build_model__(self, loss):
         x_in = tf.keras.layers.Input(shape=(self.settings['input_size']))
-        x_in = tf.keras.layers.BatchNormalization()(x_in)
+        x = tf.keras.layers.BatchNormalization()(x_in)
+        for hl in range(self.settings['n_hidden_LSTM_layers'] - 1):
+            x = tf.keras.layers.LSTM(self.settings['hidden_size'],
+                                     activation=self.settings['activation'],
+                                     kernel_regularizer=tf.keras.regularizers.l1_l2(l1=self.settings['l1'],
+                                                                                    l2=self.settings['l2']),
+                                     return_sequences=False,
+                                    )(x)
         x = (tf.keras.layers.LSTM(128,
-                                  return_sequences=True,
-                                 # activation=self.settings['activation'],
-                                  )(x_in))
-        x = (tf.keras.layers.LSTM(128,
+                                  activation=self.settings['activation'],
                                   return_sequences=False,
                                   kernel_regularizer=tf.keras.regularizers.l1_l2(l1=self.settings['l1'],
                                                                                  l2=self.settings['l2']),
