@@ -564,7 +564,7 @@ class PrTsfRecalibEngine:
         else:
             sys.exit('ERROR: uknown hyperparam method')
 
-    def run_recalibration(self, model_hyperparams:Dict, plot_history=False, plot_weights=False, print_weights_stats=False, recalibFreq = 1, load_weights = False):
+    def run_recalibration(self, model_hyperparams:Dict, plot_history=False, path_history=None, plot_weights=False, print_weights_stats=False, recalibFreq = 1, load_weights = False):
         """
         Main recalibration loop
         """
@@ -617,9 +617,10 @@ class PrTsfRecalibEngine:
                                          sample_x=rec_samples.x_test)
                 weights_file_name = 'model_weights_' + str(e) + '.h5'
                 if (time_to_recalib == 0):
+                    train_history_path = os.path.join(path_history, f'train_history_{e}.png')
                     model.fit(train_x=rec_block.x_train, train_y=rec_block.y_train,
                               val_x=rec_block.x_vali, val_y=rec_block.y_vali,
-                              plot_history=plot_history
+                              plot_history=plot_history, path_history=train_history_path
                               )
                     model.save_weights(os.path.join(saved_weigths_path,weights_file_name))
                     if (e == settings['num_ense']-1): time_to_recalib = recalibFreq-1

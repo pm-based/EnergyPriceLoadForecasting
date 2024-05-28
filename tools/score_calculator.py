@@ -7,7 +7,7 @@ import os
 
 
 class ScoreCalculator:
-    def __init__(self, y_true, pred_quantiles, quantiles_levels, target_alpha):
+    def __init__(self, y_true, pred_quantiles, quantiles_levels, target_alpha, path_to_save):
         self.y_true = y_true
         self.pred_quantiles = pred_quantiles
         self.quantiles_levels = quantiles_levels #0.05 0.025     0.01 -> 1-0.01/2
@@ -15,6 +15,7 @@ class ScoreCalculator:
         self.pinball_scores = pd.DataFrame()
         self.winkler_scores = pd.DataFrame()
         self.delta_coverage = pd.DataFrame()
+        self.path_to_save = path_to_save
 
     def compute_pinball_scores(self):
         """
@@ -107,7 +108,7 @@ class ScoreCalculator:
                 print(f'\n{score_type.capitalize()} Summary of scores: ')
                 print(np.mean(scores))
 
-    def plot_scores_3d(self, score_type='pinball'):
+    def plot_scores_3d(self, score_type='pinball', export=False, folder_path=None):
         """
         Plot the scores in a 3D graph.
         score_type: 'pinball' or 'winkler'
@@ -134,7 +135,13 @@ class ScoreCalculator:
         ax.set_ylabel('Hours')
         ax.set_zlabel(f'{score_type.capitalize()} Scores')
 
-        plt.show()
+        if not export:
+            plt.show()
+        else:
+            if folder_path is None:
+                print('Please provide a folder path to save the plots.')
+            else:
+                fig.savefig(os.path.join(folder_path, f'{score_type}_scores_3d.png'))
 
     def export_scores(self, folder_path):
         """
@@ -150,3 +157,11 @@ class ScoreCalculator:
 
         # Export the winkler_scores DataFrame to a CSV file
         self.winkler_scores.to_csv(os.path.join(folder_path, 'winkler_scores.csv'), index=False)
+
+    def export_results(self):
+        """
+        Exports all the scores and the plots to the path in the object
+        """
+        self.export_scores(self.path_to_save)
+        self.plot_scores_3d(score_type='pinball', export=True, folder_path=self.path_to_save)
+        self.plot_scores_3d(score_type='winkler', export=True, folder_path=self.path_to_save)

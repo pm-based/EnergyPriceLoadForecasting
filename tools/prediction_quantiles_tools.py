@@ -32,7 +32,7 @@ def fix_quantile_crossing(preds: np.array):
     return np.sort(preds, axis=-1)
 
 
-def plot_quantiles(results: pd.DataFrame, target: str):
+def plot_quantiles(results: pd.DataFrame, target: str, path_to_save: str = None):
     """
     Plot predicted quantiles
     """
@@ -61,3 +61,5 @@ def plot_quantiles(results: pd.DataFrame, target: str):
     ax1.set_ylabel("Predicted quantiles")
     ax1.set_title(title)
     fig1.show()
+    if path_to_save is not None:
+        fig1.savefig(path_to_save)
