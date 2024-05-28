@@ -235,10 +235,6 @@ class Ensemble():
         # for each de component, sample, aggregate samples and compute quantiles
         pred_samples = []
         for k in range(preds_test.shape[2]):
-            #print("Skewness:", preds_test[:, :, k, 0])  # Debug print
-            #print("Tailweight:", preds_test[:, :, k, 1])  # Debug print
-            #print("Loc:", preds_test[:, :, k, 2])  # Debug print
-            #print("Scale:", preds_test[:, :, k, 3])  # Debug print
             pred_samples.append(tfd.JohnsonSU(
                 skewness=preds_test[:, :, k, 0],
                 tailweight=preds_test[:, :, k, 1],
