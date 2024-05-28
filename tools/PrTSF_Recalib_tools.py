@@ -564,7 +564,7 @@ class PrTsfRecalibEngine:
         else:
             sys.exit('ERROR: uknown hyperparam method')
 
-    def run_recalibration(self, model_hyperparams:Dict, plot_history=False, plot_weights=False, print_weights_stats=False, recalibFreq = 1, loadWeigts = False):
+    def run_recalibration(self, model_hyperparams:Dict, plot_history=False, plot_weights=False, print_weights_stats=False, recalibFreq = 1, load_weights = False):
         """
         Main recalibration loop
         """
@@ -573,7 +573,7 @@ class PrTsfRecalibEngine:
         print('------------------------------------------------------------------------------')
 
         # recalib counter
-        if loadWeigts:
+        if load_weights:
             time_to_recalib = -1 #TODO: add a control to check if exist saved weigths.
         else:
             time_to_recalib = 0
