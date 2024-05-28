@@ -240,6 +240,13 @@ class Ensemble():
                 tailweight=preds_test[:, :, k, 1],
                 loc=preds_test[:, :, k, 2],
                 scale=preds_test[:, :, k, 3]).sample(10000).numpy())
+            checkNanInf = np.isnan(pred_samples[-1]) | np.isinf(pred_samples[-1])
+            checkNeg = pred_samples[-1] < 0
+            if np.any(checkNanInf):
+                print("Warning: pred_samples, the vector of samples of the JSU distribution contains NaN or Inf")
+            if np.any(checkNeg):
+                print(
+                    "Warning: pred_samples, the vector of samples of the JSU distribution contains negative values")
         return np.transpose(np.quantile(np.concatenate(pred_samples, axis=0),
                                         q=settings['target_quantiles'], axis=0),
                             axes=(1, 2, 0)).reshape(-1, len(settings['target_quantiles']))
