@@ -28,6 +28,7 @@ class LSTMRegressor:
         for hl in range(self.settings['n_hidden_LSTM_layers'] - 1):
             x = tf.keras.layers.LSTM(self.settings['hidden_size'],
                                      activation=self.settings['activation'],
+                                     dropout=0.2, recurrent_dropout=0.2,
                                      kernel_regularizer=tf.keras.regularizers.l1_l2(l1=self.settings['l1'],
                                                                                     l2=self.settings['l2']),
                                      return_sequences=True,
@@ -35,6 +36,7 @@ class LSTMRegressor:
         x = (tf.keras.layers.LSTM(128,
                                   activation=self.settings['activation'],
                                   return_sequences=False,
+                                  #dropout=0.2, recurrent_dropout=0.2,
                                   kernel_regularizer=tf.keras.regularizers.l1_l2(l1=self.settings['l1'],
                                                                                  l2=self.settings['l2']),
                                   )(x))
