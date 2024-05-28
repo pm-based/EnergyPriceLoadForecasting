@@ -1,0 +1,35 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2639
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh11120\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 Con batch = 16\'8532, lag_win = 1\'853, e lr = 0.005\'85 0.0005: il training risulta molto instabile, spesso gli spike impedisco alla loss di scendere abbastanza in fretta e si attiva l\'92es. Questo genera winskler e pinball molto altri.\
+Con batch 256 (e reg l1 e l2 1e-5, n_val 300) il training \'e8 molto pi\'f9 costante, ma i risultati sono molto simili.\
+Con batch 1024 (n_val 300, es = 80, epoche = 1000) curva del training molto pi\'f9 smooth ma non sempre decrescente. I risultati sono sempre gli stessi pessimi. In pi\'f9 guardare l\'92immagine nella cartella\
+Con reg 1e-4 il risultato non cambia\'85\
+\
+IL PROBLEMA \'e8 CHE PER L\'92ORA 9 LA DISTRIBUZIONE HA PARAMETRI TALI CHE LA JOHNSON SU VALE INF!\
+Il problema non \'e8 dunque il training in se.\
+Il modello in XX - batch128+LSTMdropout0.2_0.2+l2_1e-2+lr0 ha un delta score di 0.32\
+\
+\
+Soluzione: aumentare il day_lag risolve in gran parte il problema. Con 7 \'e8 gi\'e0 buono.\
+\
+Con batch 128, 2 layers (256 e 128), reg l2 1e-4, max epoch 800, e dropoutLSTM0.2 con 1 di day_lag\
+Funziona bene ma nel grafico ci sono quantili con spike verso il basso con alcune che vanno sotto zero. I risultati sono generalmente buoni.\
+Fatto solo su un ensable! Ci mette un p\'f2\
+\
+FIN ORA SI \'e8 SCOPERTO:\
+Da riprovare i due layers, e vedere se effettivamente mitiga il problema. La combinazione pi\'f9 layers con pi\'f9 giorni potrebbe aiutare molto\
+\
+\
+Test con softmax lr 0.0005 e l2 1e-2 peggiora i risultati. Risultato molto irregolare\
+\
+Test con 2 layers (512, 128) con dropoutLSTM 0.2 solo sul primo batch 256 Davvero pessimo. Stessi problemi NAN o INF. Il motivo \'e8 che c\'92\'e8 stata una spike durante il training. Con lag = 1 a quanto pare il problema \'e8 proprio strutturale.\
+\
+Con preprocessing (cyc e 1log) e 7 giorni di lag buono!\
+Con preprocessing (cyc e 1log) e 1 giorni di lag davvero pessimo, il peggiore pinball e wink = inf\
+Con preprocessing (cyc e ArcSinh) e 1 giorno di lag davvero pessimo, il peggiore pinball e wink = inf\
+}
