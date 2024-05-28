@@ -95,8 +95,14 @@ class LSTMRegressor:
                                               patience=self.settings['patience'],
                                               restore_best_weights=True)  # Impostato per ripristinare i migliori pesi
 
-        # Configurare i callbacks, includendo il pruning_call se presente
-        callbacks = [es] if pruning_call is None else [es, pruning_call]
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir='./tensorBoard_logs', histogram_freq=1)
+
+        # Configura i callbacks includendo sempre tensorboard_callback
+        callbacks = [es, tensorboard_callback]
+
+        # Aggiungi pruning_call ai callbacks se presente
+        if pruning_call is not None:
+            callbacks.append(pruning_call)
 
         history = self.model.fit(train_x, train_y,
                                  validation_data=(val_x, val_y),
