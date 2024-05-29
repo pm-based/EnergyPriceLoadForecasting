@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from tools.models.DNN import DNNRegressor
 from tools.models.ARX import ARXRegressor
 from tools.models.LSTM import LSTMRegressor
+from tools.models.BiLSTM import BiLSTMRegressor
 
 
 def get_model_class_from_conf(conf):
@@ -30,6 +31,8 @@ def get_model_class_from_conf(conf):
         model_class = DNNRegressor
     elif conf == 'LSTM':
         model_class = LSTMRegressor
+    elif conf == 'BiLSTM':
+        model_class = BiLSTMRegressor
     else:
         sys.exit('ERROR: unknown model_class')
     return model_class
@@ -105,6 +108,14 @@ class TensorflowRegressor():
                                                                               pred_horiz=self.pred_horiz).shape[1:]
             # Build the model architecture
             self.regressor = LSTMRegressor(settings, loss)
+
+        elif  settings['model_class']=='BiLSTM':
+            # get input size for the chosen model architecture
+            settings['input_size']=BiLSTMRegressor.build_model_input_from_series(x=sample_x,
+                                                                              col_names=self.x_columns_names,
+                                                                              pred_horiz=self.pred_horiz).shape[1:]
+            # Build the model architecture
+            self.regressor = BiLSTMRegressor(settings, loss)
 
         elif  settings['model_class']=='ARX':
             # get input size for the chosen model architecture
