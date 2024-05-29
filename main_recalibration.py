@@ -24,7 +24,10 @@ exper_setup = 'JSU-LSTM'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
-run_id = 'LSTMv1'
+run_id = 'LSTMv2'
+# Set the folder in run_id where the scores are saved
+scores_folder_name = '0 - benchmark ens10'
+scores_path = os.path.join(os.getcwd(), 'experiments', 'tasks', PF_task_name, exper_setup, run_id, scores_folder_name)
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
 hyper_mode = 'load_tuned'
 # Set the path to the preprocessing configs file
@@ -34,6 +37,7 @@ plot_train_history = True
 plot_weights = False
 print_weights_stats = False
 plot_quantiles_bool = True
+quantiles_path = os.path.join(scores_path, 'quantiles')
 #---------------------------------------------------------------------------------------------------------------------
 # Load experiments configuration from json file
 configs = load_data_model_configs(task_name=PF_task_name, exper_setup=exper_setup, run_id=run_id)
@@ -57,6 +61,7 @@ model_hyperparams = PrTSF_eng.get_model_hyperparams(method=hyper_mode, optuna_m=
 # Exec recalib loop over the test_set samples, using the tuned hyperparams
 test_predictions = PrTSF_eng.run_recalibration(model_hyperparams=model_hyperparams,
                                                plot_history=plot_train_history,
+                                               path_history=scores_path,
                                                plot_weights=plot_weights,
                                                print_weights_stats=print_weights_stats,
                                                recalibFreq=35,
@@ -65,7 +70,7 @@ test_predictions = PrTSF_eng.run_recalibration(model_hyperparams=model_hyperpara
 #--------------------------------------------------------------------------------------------------------------------
 # Plot test predictions
 if plot_quantiles_bool:
-    plot_quantiles(test_predictions, target=PF_task_name)
+    plot_quantiles(test_predictions, target=PF_task_name, path_to_save=quantiles_path)
 
 pred_steps = configs['model_config']['pred_horiz']
 quantiles_levels = PrTSF_eng.model_configs['target_quantiles']
@@ -73,8 +78,8 @@ quantiles_levels = PrTSF_eng.model_configs['target_quantiles']
 calculator = ScoreCalculator(y_true=test_predictions[PF_task_name].to_numpy().reshape(-1, pred_steps),
                              pred_quantiles=test_predictions.loc[:,test_predictions.columns != PF_task_name].to_numpy().reshape(-1, pred_steps, len(quantiles_levels)),
                              quantiles_levels=quantiles_levels,
-                             target_alpha=PrTSF_eng.model_configs['target_alpha'])
-
+                             target_alpha=PrTSF_eng.model_configs['target_alpha'],
+                             path_to_save=scores_path)
 
 calculator.compute_pinball_scores()
 calculator.compute_winkler_scores()
@@ -84,13 +89,10 @@ calculator.display_scores(score_type='pinball', table=False, heatmap=True)
 calculator.display_scores(score_type='winkler', table=False, heatmap=True)
 calculator.display_scores(score_type='delta_coverage')
 
-
 calculator.plot_scores_3d(score_type='pinball')
 calculator.plot_scores_3d(score_type='winkler')
 
-calculator.export_scores("./")
-calculator.export_scores("./")
-
+calculator.export_results()
 
 #--------------------------------------------------------------------------------------------------------------------
 print('Done!')

@@ -139,7 +139,7 @@ class TensorflowRegressor():
     def predict(self, x):
         return self.output_handler(self.regressor.predict(x))
 
-    def fit(self, train_x, train_y, val_x, val_y, verbose=0, pruning_call=None, plot_history=False):
+    def fit(self, train_x, train_y, val_x, val_y, verbose=0, pruning_call=None, plot_history=False, path_history=None):
         history = self.regressor.fit(train_x, train_y, val_x, val_y, verbose=0, pruning_call=None)
         if plot_history:
             plt.plot(history.history['loss'], label='train_loss')
@@ -147,6 +147,8 @@ class TensorflowRegressor():
             plt.grid()
             plt.legend()
             plt.show()
+            if path_history is not None:
+                plt.savefig(path_history)
 
     def evaluate(self, x, y):
         return self.regressor.evaluate(x=x, y=y)
