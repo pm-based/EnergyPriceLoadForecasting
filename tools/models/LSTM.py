@@ -27,14 +27,14 @@ class LSTMRegressor:
         x = tf.keras.layers.BatchNormalization()(x_in)
         for hl in range(self.settings['n_hidden_LSTM_layers'] - 1):
             x = tf.keras.layers.LSTM(self.settings['hidden_size'],
-                                     activation=self.settings['activation'],
+                                     #activation=self.settings['activation'],
                                      dropout=0.2, recurrent_dropout=0.2,
                                      kernel_regularizer=tf.keras.regularizers.l1_l2(l1=self.settings['l1'],
                                                                                     l2=self.settings['l2']),
                                      return_sequences=True,
                                     )(x)
         x = (tf.keras.layers.LSTM(128,
-                                  activation=self.settings['activation'],
+                                  #activation=self.settings['activation'],
                                   return_sequences=False,
                                   #dropout=0.2, recurrent_dropout=0.2,
                                   kernel_regularizer=tf.keras.regularizers.l1_l2(l1=self.settings['l1'],
@@ -70,10 +70,15 @@ class LSTMRegressor:
                                           activation='linear')(x)
             output = tfp.layers.DistributionLambda(
                 lambda t: tfd.JohnsonSU(
-                    skewness=t[..., :self.settings['pred_horiz']],
-                    tailweight=t[..., self.settings['pred_horiz']:2 * self.settings['pred_horiz']],
-                    loc=t[..., 2 * self.settings['pred_horiz']:3 * self.settings['pred_horiz']],
-                    scale=1e-3 + tf.math.softplus(t[..., 3 * self.settings['pred_horiz']:])))(logit)
+                    skewness=t[..., :self.settings['pred_horiz']], # skewness have to be around 0
+                    # tailweight have to be around 2
+                    tailweight=1e-3 + tf.nn.relu(self.settings['JSU_tailweight'] + t[..., self.settings['pred_horiz']:2 * self.settings['pred_horiz']]),
+                    loc= t[..., 2 * self.settings['pred_horiz']:3 * self.settings['pred_horiz']],
+                    scale=1e-3 + tf.nn.relu(self.settings['JSU_Scale'] + tf.math.softplus(t[..., 3 * self.settings['pred_horiz']:])), #scale have to be around 0.6
+                    #scale= tf.math.softplus(t[..., 3 * self.settings['pred_horiz']:]),
+                    # scale have to be around 0.6
+
+                    validate_args = True))(logit)
 
         else:
             sys.exit('ERROR: unknown PF_method config!')
@@ -139,12 +144,14 @@ class LSTMRegressor:
 
     @staticmethod
     def get_hyperparams_trial(trial, settings):
-        settings['hidden_size'] = trial.suggest_int('hidden_size', 64, 960, step=64)
-        settings['n_hidden_LSTM_layers'] = 2  # trial.suggest_int('n_hidden_layers', 1, 3)
-        settings['lr'] = trial.suggest_float('lr', 1e-5, 1e-1, log=True)
-        settings['activation'] = 'softplus',
-        settings['l1'] = trial.suggest_float('l1', 1e-7, 1e-3, log=True)
-        settings['l2'] = trial.suggest_float('l2', 1e-7, 1e-3, log=True)
+        settings['hidden_size'] = 128#trial.suggest_int('hidden_size', 64, 960, step=64)
+        settings['n_hidden_LSTM_layers'] = 1  # trial.suggest_int('n_hidden_layers', 1, 3)
+        settings['lr'] = 0.001#trial.suggest_float('lr', 1e-5, 1e-1, log=True)
+       # settings['activation'] = 'tanh',
+        settings['l1'] =  1e-3#trial.suggest_float('l1', 1e-7, 1e-3, log=True)
+        settings['l2'] =  1e-3#trial.suggest_float('l2', 1e-7, 1e-3, log=True)
+        settings['JSU_tailweight'] = trial.suggest_float('JSU_tailweight', 1e-3, 2, log=True)
+        settings['JSU_Scale'] = trial.suggest_float('JSU_Scale', 1e-2, 0.2, log=True)
 
         return settings
 
@@ -159,8 +166,10 @@ class LSTMRegressor:
             'hidden_size': configs['hidden_size'],
             'n_hidden_LSTM_layers': configs['n_hidden_LSTM_layers'],
             'lr': configs['lr'],
-            'activation': configs['activation'],
+            #'activation': configs['activation'],
             'l1': configs['l1'],
             'l2': configs['l2'],
+            'JSU_tailweight': configs['JSU_tailweight'],
+            'JSU_Scale': configs['JSU_Scale']
         }
         return model_hyperparams

@@ -7,7 +7,7 @@ import os
 
 
 class ScoreCalculator:
-    def __init__(self, y_true, pred_quantiles, quantiles_levels, target_alpha, path_to_save):
+    def __init__(self, y_true, pred_quantiles, quantiles_levels, target_alpha, path_to_save = "."): # TODO: check if is correct ".". It must be a optional arg
         self.y_true = y_true
         self.pred_quantiles = pred_quantiles
         self.quantiles_levels = quantiles_levels #0.05 0.025     0.01 -> 1-0.01/2
@@ -48,6 +48,11 @@ class ScoreCalculator:
         alpha_levels = [1 - 2 * q for q in self.quantiles_levels[:len(self.quantiles_levels) // 2]]
         self.winkler_scores = pd.DataFrame(score, columns=alpha_levels, index=range(24))
         return score
+
+    def compute_mean_pinball(self):
+        return np.mean(self.compute_pinball_scores())
+    def compute_mean_winkler(self):
+        return np.mean(self.compute_winkler_scores())
 
     def compute_delta_coverage(self):
         """

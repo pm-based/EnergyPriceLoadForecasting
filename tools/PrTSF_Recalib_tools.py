@@ -28,6 +28,7 @@ from tools.prediction_quantiles_tools import plot_quantiles
 from tools.data_utils import columns_keys, features_keys
 from tools.models.models_tools import regression_model, Ensemble, get_model_class_from_conf
 from tools.data_preprocess.preprocessing_tools import Preprocessor
+from tools.score_calculator import ScoreCalculator
 
 
 class RecalibBlock:
@@ -459,11 +460,11 @@ class PrTsfRecalibEngine:
             pickle.dump(test_results_df, f)
 
 
-    def run_hyperparams_tuning(self, optuna_m:str='random', n_trials: int=50):
+    def run_hyperparams_tuning(self, optuna_m:str='random', n_trials: int=50, evalute_scores = False):
         """
         Model hyperparameters tuning routine
         """
-        def objective(trial):
+        def objective(trial, evalute_scores_flag = evalute_scores):
             # Clear clutter from previous session graphs.
             tf.keras.backend.clear_session()
             # Update model configs with hyperparams trial
@@ -478,6 +479,41 @@ class PrTsfRecalibEngine:
                       val_x=train_vali_block.x_vali, val_y=train_vali_block.y_vali,
                       pruning_call=TFKerasPruningCallback(trial, "val_loss"),
                       plot_history=False)
+
+            if True: # Trying to implement delta cov and scores as metric for opturna
+                settings = {**self.model_configs}
+                ensemble = Ensemble(settings=settings)
+                pred = []
+                pred.append(model.predict(x=train_vali_block.x_vali))
+                pred = ensemble.aggregate_preds(pred)
+                pred = ensemble.get_preds_test_quantiles(preds_test=pred)
+
+                rescaled_PIs = {}
+                for i in range(pred.shape[-1]):
+                    if self.data_configs.preprocess != 'Custom':
+                        rescaled_PIs[self.model_configs['target_quantiles'][i]] = self.preproc[
+                                                                                      'target'].inverse_transform(
+                            pred[:, i:i + 1])[:, 0]
+                    else:
+                        rescaled_PIs = self.preproc.inverse_transform(
+                            model_configs=self.model_configs, rescaled_PIs=rescaled_PIs, ens_p=pred, i=i)
+                results_df = pd.DataFrame(rescaled_PIs)
+                results_PIs= []
+                results_PIs.append(results_df)
+                results = pd.concat(results_PIs,axis=0)
+                #test_results_df = self.__transform_test_results__(results_df)
+
+                pred_steps = self.data_configs.pred_horiz
+                quantiles_levels = self.model_configs['target_quantiles']
+
+                cal = ScoreCalculator(y_true=train_vali_block.y_vali.reshape(-1, pred_steps),
+                                      pred_quantiles=results.to_numpy().reshape(-1, pred_steps, len(quantiles_levels)),
+                                      quantiles_levels=quantiles_levels,
+                                      target_alpha=self.model_configs['target_alpha'])
+
+                trial.set_user_attr("pinball score", cal.compute_mean_pinball())
+                trial.set_user_attr("winkler score", cal.compute_mean_winkler())
+                return cal.compute_delta_coverage()
 
             # Compute val loss
             # TODO: Implement suppor to add additional metrics in optuna.
@@ -541,7 +577,7 @@ class PrTsfRecalibEngine:
 
         return self.model_class.get_hyperparams_dict_from_configs(self.model_configs)
 
-    def get_model_hyperparams(self, method, optuna_m='random'):
+    def get_model_hyperparams(self, method, optuna_m='random', evalute_scores = False):
         self.optuna_m = optuna_m
         self.hyper_mode = method
         path = os.path.join(self.get_exper_path(), 'tuned_hyperp-' + optuna_m + '.json')

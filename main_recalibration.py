@@ -26,10 +26,10 @@ exper_setup = 'JSU-LSTM'
 # Set run configs
 run_id = 'LSTMv2'
 # Set the folder in run_id where the scores are saved
-scores_folder_name = '0 - benchmark ens10'
+scores_folder_name = '.'
 scores_path = os.path.join(os.getcwd(), 'experiments', 'tasks', PF_task_name, exper_setup, run_id, scores_folder_name)
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
-hyper_mode = 'load_tuned'
+hyper_mode = 'optuna_tuner'
 # Set the path to the preprocessing configs file
 preprocessing = 'preprocess_configs.json'
 # Plot train history flag
@@ -56,7 +56,9 @@ PrTSF_eng = PrTsfRecalibEngine(dataset=ds,
                                preproc_configs=preproc_configs)
 
 # Get model hyperparameters (previously saved or by tuning)
-model_hyperparams = PrTSF_eng.get_model_hyperparams(method=hyper_mode, optuna_m=configs['model_config']['optuna_m'])
+model_hyperparams = PrTSF_eng.get_model_hyperparams(method=hyper_mode,
+                                                    optuna_m=configs['model_config']['optuna_m'],
+                                                    evalute_scores = True)
 
 # Exec recalib loop over the test_set samples, using the tuned hyperparams
 test_predictions = PrTSF_eng.run_recalibration(model_hyperparams=model_hyperparams,
