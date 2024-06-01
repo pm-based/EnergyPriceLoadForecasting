@@ -20,7 +20,7 @@ from tools.score_calculator import ScoreCalculator
 # Set PEPF task to execute
 PF_task_name = 'NetLoad'
 # Set Model setup to execute: point_ARX, point-DNN, QR-DNN, N-DNN
-exper_setup = 'point-SARIMAX'
+exper_setup = 'GMM-DNN'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs

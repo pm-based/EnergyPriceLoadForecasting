@@ -67,6 +67,17 @@ class DNNRegressor:
                     loc=t[..., 2 * self.settings['pred_horiz']:3 * self.settings['pred_horiz']],
                     scale=1e-3 + tf.math.softplus(t[..., 3 * self.settings['pred_horiz']:])))(logit)
 
+        elif self.settings['PF_method'] == 'GMM':
+            out_size = 2
+            logit = tf.keras.layers.Dense(self.settings['pred_horiz'] * out_size,
+                                          activation='linear')(x)
+            output = tfp.layers.DistributionLambda(
+                lambda t: tfd.MixtureSameFamily(
+                    mixture_distribution=tfd.Categorical(logits=t[..., :self.settings['pred_horiz']]),
+                    components_distribution=tfd.Normal(
+                        loc=t[..., self.settings['pred_horiz']:2 * self.settings['pred_horiz']],
+                        scale=1e-3 + 3 * tf.math.softplus(0.05 * t[..., 2 * self.settings['pred_horiz']:]))))(logit)
+
         else:
             sys.exit('ERROR: unknown PF_method config!')
 

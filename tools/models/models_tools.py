@@ -20,7 +20,6 @@ from tools.models.DNN import DNNRegressor
 from tools.models.ARX import ARXRegressor
 from tools.models.ARIMA2 import ARIMARegressor2
 from tools.models.SARIMAX import SARIMAXRegressor
-from tools.models.SARIMAXmultivariate import SARIMAXmultivariateRegressor
 
 def get_model_class_from_conf(conf):
     """
@@ -36,8 +35,6 @@ def get_model_class_from_conf(conf):
         model_class = ARIMARegressor2
     elif conf == 'SARIMAX':
         model_class = SARIMAXRegressor
-    elif conf == 'SARIMAXmultivariate':
-        model_class = SARIMAXmultivariateRegressor
     else:
         sys.exit('ERROR: unknown model_class')
     return model_class
@@ -93,6 +90,7 @@ class TensorflowRegressor():
             loss = 'mae'
         elif (settings['PF_method'] == 'Normal'
             or settings['PF_method'] == 'JSU'
+            or settings['PF_method'] == 'GMM'
         ):
             loss = lambda y, rv_y: -rv_y.log_prob(y) # Negative log-likelihood
         else:
@@ -128,8 +126,6 @@ class TensorflowRegressor():
         elif settings['model_class']=='SARIMAX':
             self.regressor = SARIMAXRegressor(self.settings, self.loss)
 
-        elif settings['model_class'] == 'SARIMAXmultivariate':
-            self.regressor = SARIMAXmultivariateRegressor(self.settings, self.loss)
 
         else:
             sys.exit('ERROR: unknown model_class')
@@ -139,6 +135,8 @@ class TensorflowRegressor():
             self.output_handler = self.__pred_Normal_params__
         elif settings['PF_method'] == 'JSU':
             self.output_handler = self.__pred_JSU_params__
+        elif settings['PF_method'] == 'GMM':
+            self.output_handler = self.__pred_GMM_params__
         else:
             self.output_handler =self.__quantiles_out__
 
@@ -185,6 +183,10 @@ class TensorflowRegressor():
         # Expand dimension to enable concat in ensemble
         return tf.expand_dims(tf.concat([skewness, tailweight, loc, scale], axis=-1), axis=2)
 
+    def __pred_GMM_params__(self, pred_dists: tfp.distributions):
+        loc = tf.expand_dims(pred_dists.n_components, axis=-1)
+        scale = tf.expand_dims(pred_dists.covariance_type, axis=-1)
+        return tf.expand_dims(tf.concat([loc, scale], axis=-1), axis=2)
 
 
 class Ensemble():
@@ -207,6 +209,9 @@ class Ensemble():
         elif (self.settings['PF_method'] == 'JSU'):
             self.ensemble_aggregator = self.__aggregate_de__
             self._build_test_PIs = self.__build_JSU_PIs__
+        elif (self.settings['PF_method'] == 'GMM'):
+            self.ensemble_aggregator = self.__aggregate_de__
+            self._build_test_PIs = self.__get_qr_PIs__
         else:
             sys.exit('ERROR: Ensemble config not supported!')
 
