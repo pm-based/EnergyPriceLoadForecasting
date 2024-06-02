@@ -460,11 +460,12 @@ class PrTsfRecalibEngine:
             pickle.dump(test_results_df, f)
 
 
-    def run_hyperparams_tuning(self, optuna_m:str='random', n_trials: int=50, evalute_scores = False):
+    def run_hyperparams_tuning(self, optuna_m:str='random', n_trials: int=50, evaluate_scores = False):
         """
         Model hyperparameters tuning routine
         """
-        def objective(trial, evalute_scores_flag = evalute_scores):
+
+        def objective(trial):
             # Clear clutter from previous session graphs.
             tf.keras.backend.clear_session()
             # Update model configs with hyperparams trial
@@ -480,7 +481,7 @@ class PrTsfRecalibEngine:
                       pruning_call=TFKerasPruningCallback(trial, "val_loss"),
                       plot_history=False)
 
-            if True: # Trying to implement delta cov and scores as metric for opturna
+            if True:  # Trying to implement delta cov and scores as metric for opturna
                 settings = {**self.model_configs}
                 ensemble = Ensemble(settings=settings)
                 pred = []
@@ -489,6 +490,10 @@ class PrTsfRecalibEngine:
                 pred = ensemble.get_preds_test_quantiles(preds_test=pred)
 
                 rescaled_PIs = {}
+                print("Not inverse transformed pred_quantiles: ")
+                pred_steps = self.data_configs.pred_horiz
+                quantiles_levels = self.model_configs['target_quantiles']
+                print(pred.reshape(-1, pred_steps, len(quantiles_levels)))
                 for i in range(pred.shape[-1]):
                     if self.data_configs.preprocess != 'Custom':
                         rescaled_PIs[self.model_configs['target_quantiles'][i]] = self.preproc[
@@ -501,15 +506,49 @@ class PrTsfRecalibEngine:
                 results_PIs= []
                 results_PIs.append(results_df)
                 results = pd.concat(results_PIs,axis=0)
-                #test_results_df = self.__transform_test_results__(results_df)
+                # test_results_df = self.__transform_test_results__(results_df)
 
                 pred_steps = self.data_configs.pred_horiz
                 quantiles_levels = self.model_configs['target_quantiles']
 
-                cal = ScoreCalculator(y_true=train_vali_block.y_vali.reshape(-1, pred_steps),
+                """
+                # Inverse transform the y_vali
+                original_y = {}
+                rescaled_y = train_vali_block.y_vali
+                for i in range(rescaled_y.shape[-1]):
+                    if self.data_configs.preprocess != 'Custom':
+                        original_y[self.model_configs['target_quantiles'][i]] = self.preproc[
+                                                                                      'target'].inverse_transform(
+                            rescaled_y[:, i:i + 1])[:, 0]
+                    else:
+                        original_y = self.preproc.inverse_transform(
+                            model_configs=self.model_configs, rescaled_PIs=original_y, ens_p=rescaled_y, i=i)
+                original_y_df = pd.DataFrame(original_y)
+                y_intervals = []
+                y_intervals.append(original_y_df)
+                y_vali = pd.concat(y_intervals, axis=0)
+                """
+
+                y_vali = self.preproc['target'].inverse_transform(train_vali_block.y_vali)
+
+                print("y_vali:")
+                print(y_vali.reshape(-1, pred_steps))
+
+                print("pred_quantiles:")
+                print(results.to_numpy().reshape(-1, pred_steps, len(quantiles_levels)))
+
+                print("quantiles_levels:")
+                print(quantiles_levels)
+
+                print("target_alpha:")
+                print(self.model_configs['target_alpha'])
+
+                cal = ScoreCalculator(y_true=y_vali.reshape(-1, pred_steps),
                                       pred_quantiles=results.to_numpy().reshape(-1, pred_steps, len(quantiles_levels)),
                                       quantiles_levels=quantiles_levels,
                                       target_alpha=self.model_configs['target_alpha'])
+
+                print("!!!!!!!!ENTERED IN THE EVALUATE SCORES!!!!!!!")
 
                 trial.set_user_attr("pinball score", cal.compute_mean_pinball())
                 trial.set_user_attr("winkler score", cal.compute_mean_winkler())
@@ -521,6 +560,64 @@ class PrTsfRecalibEngine:
             metrics = model.evaluate(x=train_vali_block.x_vali, y=train_vali_block.y_vali)
             #results = metrics[0]
             return metrics
+
+        """
+        def objective(trial, evaluate_scores_flag=evaluate_scores):
+            # Clear clutter from previous session graphs.
+            tf.keras.backend.clear_session()
+            # Update model configs with hyperparams trial
+            self.model_configs = self.model_class.get_hyperparams_trial(trial=trial, settings=self.model_configs)
+
+            # Build model using the current configs
+            model = regression_model(settings=self.model_configs,
+                                     sample_x=train_vali_block.x_vali[0:1])
+
+            # Train model
+            model.fit(train_x=train_vali_block.x_train, train_y=train_vali_block.y_train,
+                      val_x=train_vali_block.x_vali, val_y=train_vali_block.y_vali,
+                      pruning_call=TFKerasPruningCallback(trial, "val_loss"),
+                      plot_history=False)
+
+            # Compute delta_coverage
+            settings = {**self.model_configs}
+            ensemble = Ensemble(settings=settings)
+            pred = []
+            pred.append(model.predict(x=train_vali_block.x_vali))
+            pred = ensemble.aggregate_preds(pred)
+            pred = ensemble.get_preds_test_quantiles(preds_test=pred)
+            rescaled_PIs = {}
+            for i in range(pred.shape[-1]):
+                if self.data_configs.preprocess != 'Custom':
+                    rescaled_PIs[self.model_configs['target_quantiles'][i]] = self.preproc[
+                                                                                  'target'].inverse_transform(
+                        pred[:, i:i + 1])[:, 0]
+                else:
+                    rescaled_PIs = self.preproc.inverse_transform(
+                        model_configs=self.model_configs, rescaled_PIs=rescaled_PIs, ens_p=pred, i=i)
+            results_df = pd.DataFrame(rescaled_PIs)
+            test_results_df = self.__transform_test_results__(results_df)
+
+            pred_steps = self.data_configs.pred_horiz
+            quantiles_levels = self.model_configs['target_quantiles']
+
+            # Compute delta_coverage
+            calculator = ScoreCalculator(y_true=test_results_df[PF_task_name].to_numpy().reshape(-1, pred_steps),
+                                         pred_quantiles=test_results_df.loc[:,
+                                                        test_results_df.columns != PF_task_name].to_numpy().reshape(-1,
+                                                                                                                    pred_steps,
+                                                                                                                    len(quantiles_levels)),
+                                         quantiles_levels=quantiles_levels,
+                                         target_alpha=PrTSF_eng.model_configs['target_alpha'],
+                                         path_to_save=scores_path)
+            cal = ScoreCalculator(y_true=train_vali_block.y_vali.reshape(-1, pred_steps),
+                                  pred_quantiles=results.to_numpy().reshape(-1, pred_steps, len(quantiles_levels)),
+                                  quantiles_levels=quantiles_levels,
+                                  target_alpha=self.model_configs['target_alpha'])
+            delta_coverage = calculator.compute_delta_coverage()
+
+            # Return delta_coverage as the objective
+            return delta_coverage
+        """
 
         # start from first train sample
         init_sample = 0

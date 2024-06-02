@@ -1,6 +1,6 @@
 {
     "data_config": {
-        "dataset_name": "LF_bench_0.csv",
+        "dataset_name": "LF_const_hour.csv",
         "idx_start_train": {
             "y": 2014,
             "m": 1,
@@ -19,7 +19,7 @@
         "keep_past_train_samples": false,
         "steps_lag_win": 1,
         "pred_horiz": 24,
-        "preprocess": "Custom",
+        "preprocess": "StandardScaler",
         "shuffle_mode": "none",
         "num_vali_samples": 150
     },
@@ -39,7 +39,7 @@
             0.09,
             0.10            
         ],
-        "max_epochs": 300,
+        "max_epochs": 50,
         "batch_size": 64,
         "patience": 25,
         "num_ense": 1
