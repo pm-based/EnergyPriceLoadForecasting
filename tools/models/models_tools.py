@@ -252,7 +252,7 @@ class Ensemble():
                 skewness=preds_test[:, :, k, 0],
                 tailweight=preds_test[:, :, k, 1],
                 loc=preds_test[:, :, k, 2],
-                scale=preds_test[:, :, k, 3]).sample(10000).numpy())
+                scale=preds_test[:, :, k, 3]).sample(100000).numpy())
 
             # check if it is Nan or Inf
             checkNanInf = np.isnan(pred_samples[-1]) | np.isinf(pred_samples[-1])
