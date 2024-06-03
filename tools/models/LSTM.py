@@ -150,8 +150,8 @@ class LSTMRegressor:
        # settings['activation'] = 'tanh',
         settings['l1'] =  1e-3#trial.suggest_float('l1', 1e-7, 1e-3, log=True)
         settings['l2'] =  1e-3#trial.suggest_float('l2', 1e-7, 1e-3, log=True)
-        settings['JSU_tailweight'] = trial.suggest_float('JSU_tailweight', 1e-3, 2, log=True)
-        settings['JSU_Scale'] = trial.suggest_float('JSU_Scale', 1e-2, 0.2, log=True)
+        settings['JSU_tailweight'] = trial.suggest_float('JSU_tailweight', 1e-2, 10, log=True)
+        settings['JSU_Scale'] = trial.suggest_float('JSU_Scale', 1e-2, 0.8, log=True)
 
         return settings
 

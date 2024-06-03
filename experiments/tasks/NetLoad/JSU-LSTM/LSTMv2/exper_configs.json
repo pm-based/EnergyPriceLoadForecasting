@@ -1,6 +1,6 @@
 {
     "data_config": {
-        "dataset_name": "LF_const_hour.csv",
+        "dataset_name": "LF_bench_0.csv",
         "idx_start_train": {
             "y": 2014,
             "m": 1,
@@ -14,14 +14,14 @@
         "idx_end_oos_preds": {
             "y": 2017,
             "m": 12,
-            "d": 4
+            "d": 30
         },
         "keep_past_train_samples": false,
         "steps_lag_win": 1,
         "pred_horiz": 24,
-        "preprocess": "StandardScaler",
+        "preprocess": "Custom",
         "shuffle_mode": "none",
-        "num_vali_samples": 150
+        "num_vali_samples": 200
     },
     "model_config": {
         "PF_method": "JSU",
@@ -39,7 +39,7 @@
             0.09,
             0.10            
         ],
-        "max_epochs": 50,
+        "max_epochs": 300,
         "batch_size": 64,
         "patience": 25,
         "num_ense": 1

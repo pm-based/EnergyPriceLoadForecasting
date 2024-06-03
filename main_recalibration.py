@@ -58,7 +58,7 @@ PrTSF_eng = PrTsfRecalibEngine(dataset=ds,
 # Get model hyperparameters (previously saved or by tuning)
 model_hyperparams = PrTSF_eng.get_model_hyperparams(method=hyper_mode,
                                                     optuna_m=configs['model_config']['optuna_m'],
-                                                    evalute_scores = True)
+                                                    evaluate_scores = True)
 
 # Exec recalib loop over the test_set samples, using the tuned hyperparams
 test_predictions = PrTSF_eng.run_recalibration(model_hyperparams=model_hyperparams,

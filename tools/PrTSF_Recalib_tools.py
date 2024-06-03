@@ -481,53 +481,108 @@ class PrTsfRecalibEngine:
                       pruning_call=TFKerasPruningCallback(trial, "val_loss"),
                       plot_history=False)
 
-            if True:  # Trying to implement delta cov and scores as metric for opturna
-                settings = {**self.model_configs}
-                ensemble = Ensemble(settings=settings)
-                pred = []
-                pred.append(model.predict(x=train_vali_block.x_vali))
-                pred = ensemble.aggregate_preds(pred)
-                pred = ensemble.get_preds_test_quantiles(preds_test=pred)
-
-                rescaled_PIs = {}
-                print("Not inverse transformed pred_quantiles: ")
-                pred_steps = self.data_configs.pred_horiz
-                quantiles_levels = self.model_configs['target_quantiles']
-                print(pred.reshape(-1, pred_steps, len(quantiles_levels)))
-                for i in range(pred.shape[-1]):
-                    if self.data_configs.preprocess != 'Custom':
-                        rescaled_PIs[self.model_configs['target_quantiles'][i]] = self.preproc[
-                                                                                      'target'].inverse_transform(
-                            pred[:, i:i + 1])[:, 0]
-                    else:
-                        rescaled_PIs = self.preproc.inverse_transform(
-                            model_configs=self.model_configs, rescaled_PIs=rescaled_PIs, ens_p=pred, i=i)
-                results_df = pd.DataFrame(rescaled_PIs)
-                results_PIs= []
-                results_PIs.append(results_df)
-                results = pd.concat(results_PIs,axis=0)
-                # test_results_df = self.__transform_test_results__(results_df)
-
-                pred_steps = self.data_configs.pred_horiz
-                quantiles_levels = self.model_configs['target_quantiles']
-
-                y_true = self.preproc['target'].inverse_transform(train_vali_block.y_vali)
-
-                cal = ScoreCalculator(y_true=y_true.reshape(-1, pred_steps),
-                                      pred_quantiles=results.to_numpy().reshape(-1, pred_steps, len(quantiles_levels)),
-                                      quantiles_levels=quantiles_levels,
-                                      target_alpha=self.model_configs['target_alpha'])
-
-                trial.set_user_attr("pinball score", cal.compute_mean_pinball())
-                trial.set_user_attr("winkler score", cal.compute_mean_winkler())
-                return cal.compute_delta_coverage()
-
             # Compute val loss
             # TODO: Implement suppor to add additional metrics in optuna.
             # Check result also for probabilistic forecasting
             metrics = model.evaluate(x=train_vali_block.x_vali, y=train_vali_block.y_vali)
             #results = metrics[0]
             return metrics
+
+        def objective_score(trial):
+            # Clear clutter from previous session graphs.
+            tf.keras.backend.clear_session()
+            # Update model configs with hyperparams trial
+            self.model_configs = self.model_class.get_hyperparams_trial(trial=trial, settings=self.model_configs)
+
+            # Build model using the current configs
+            model = regression_model(settings=self.model_configs,
+                                     sample_x=train_vali_block.x_vali[0:1])
+
+            # Train model
+            model.fit(train_x=train_vali_block.x_train, train_y=train_vali_block.y_train,
+                      val_x=train_vali_block.x_vali, val_y=train_vali_block.y_vali,
+                      pruning_call=TFKerasPruningCallback(trial, "val_loss"),
+                      plot_history=False)
+
+            settings = {**self.model_configs}
+            ensemble = Ensemble(settings=settings)
+            pred = []
+            pred.append(model.predict(x=train_vali_block.x_vali))
+            pred = ensemble.aggregate_preds(pred)
+
+            # Calculate means
+            mean_skewness = np.mean(pred[:, :, 0, 0])
+            mean_tailweight = np.mean(pred[:, :, 0, 1])
+            mean_loc = np.mean(pred[:, :, 0, 2])
+            mean_scale = np.mean(pred[:, :, 0, 3])
+
+            # Calculate maxima
+            max_skewness = np.max(pred[:, :, 0, 0])
+            max_tailweight = np.max(pred[:, :, 0, 1])
+            max_loc = np.max(pred[:, :, 0, 2])
+            max_scale = np.max(pred[:, :, 0, 3])
+
+            # Calculate minima
+            min_skewness = np.min(pred[:, :, 0, 0])
+            min_tailweight = np.min(pred[:, :, 0, 1])
+            min_loc = np.min(pred[:, :, 0, 2])
+            min_scale = np.min(pred[:, :, 0, 3])
+
+            pred = ensemble.get_preds_test_quantiles(preds_test=pred)
+
+            rescaled_PIs = {}
+            pred_steps = self.data_configs.pred_horiz
+            quantiles_levels = self.model_configs['target_quantiles']
+            for i in range(pred.shape[-1]):
+                if self.data_configs.preprocess != 'Custom':
+                    rescaled_PIs[self.model_configs['target_quantiles'][i]] = self.preproc[
+                                                                                  'target'].inverse_transform(
+                        pred[:, i:i + 1])[:, 0]
+                else:
+                    rescaled_PIs = self.preproc.inverse_transform(
+                        model_configs=self.model_configs, rescaled_PIs=rescaled_PIs, ens_p=pred, i=i)
+            results_df = pd.DataFrame(rescaled_PIs)
+            results_PIs = []
+            results_PIs.append(results_df)
+            results = pd.concat(results_PIs, axis=0)
+            # test_results_df = self.__transform_test_results__(results_df)
+
+            pred_steps = self.data_configs.pred_horiz
+            quantiles_levels = self.model_configs['target_quantiles']
+
+            if self.data_configs.preprocess != 'Custom':
+                y_true = self.preproc['target'].inverse_transform(train_vali_block.y_vali)
+            else:
+                y_true = self.preproc.inverse_transform_simple(train_vali_block.y_vali)
+
+            cal = ScoreCalculator(y_true=y_true.reshape(-1, pred_steps),
+                                  pred_quantiles=results.to_numpy().reshape(-1, pred_steps, len(quantiles_levels)),
+                                  quantiles_levels=quantiles_levels,
+                                  target_alpha=self.model_configs['target_alpha'])
+
+            trial.set_user_attr("pinball score", cal.compute_mean_pinball())
+            trial.set_user_attr("winkler score", cal.compute_mean_winkler())
+            trial.set_user_attr("loss func", model.evaluate(x=train_vali_block.x_vali, y=train_vali_block.y_vali))
+
+            # Set user attributes for means
+            trial.set_user_attr("mean skewness", mean_skewness.astype(np.float64))
+            trial.set_user_attr("mean tailweight", mean_tailweight.astype(np.float64))
+            trial.set_user_attr("mean loc", mean_loc.astype(np.float64))
+            trial.set_user_attr("mean scale", mean_scale.astype(np.float64))
+
+            # Set user attributes for maxima
+            trial.set_user_attr("max skewness", max_skewness.astype(np.float64))
+            trial.set_user_attr("max tailweight", max_tailweight.astype(np.float64))
+            trial.set_user_attr("max loc", max_loc.astype(np.float64))
+            trial.set_user_attr("max scale", max_scale.astype(np.float64))
+
+            # Set user attributes for minima
+            trial.set_user_attr("min skewness", min_skewness.astype(np.float64))
+            trial.set_user_attr("min tailweight", min_tailweight.astype(np.float64))
+            trial.set_user_attr("min loc", min_loc.astype(np.float64))
+            trial.set_user_attr("min scale", min_scale.astype(np.float64))
+
+            return cal.compute_delta_coverage()
 
         # start from first train sample
         init_sample = 0
@@ -564,7 +619,10 @@ class PrTsfRecalibEngine:
                                     )
 
         timeout = 3600 * 24.0 * 7  # 7 days
-        study.optimize(objective, n_trials=n_trials, timeout=timeout)
+        if evaluate_scores:
+            study.optimize(objective_score, n_trials=n_trials, timeout=timeout)
+        else:
+            study.optimize(objective, n_trials=n_trials, timeout=timeout)
         pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
         complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
         print("Study statistics: ")
@@ -584,7 +642,7 @@ class PrTsfRecalibEngine:
 
         return self.model_class.get_hyperparams_dict_from_configs(self.model_configs)
 
-    def get_model_hyperparams(self, method, optuna_m='random', evalute_scores = False):
+    def get_model_hyperparams(self, method, optuna_m='random', evaluate_scores = False):
         self.optuna_m = optuna_m
         self.hyper_mode = method
         path = os.path.join(self.get_exper_path(), 'tuned_hyperp-' + optuna_m + '.json')
@@ -598,7 +656,7 @@ class PrTsfRecalibEngine:
         elif method=='optuna_tuner':
             print('-----------------------------------------')
             print('Starting optuna tuner')
-            model_hyperparams= self.run_hyperparams_tuning(optuna_m=optuna_m)
+            model_hyperparams= self.run_hyperparams_tuning(optuna_m=optuna_m, evaluate_scores = evaluate_scores)
             print('-----------------------------------------')
             # save model hyperparams to json
             with open(path, 'w') as f:

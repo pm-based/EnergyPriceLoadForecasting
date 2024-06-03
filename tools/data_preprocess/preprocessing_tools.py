@@ -122,6 +122,30 @@ class Preprocessor:
                 print('ERROR: Preprocessing method not found')
 
         return self.data
+# TODO: Find a better way to deal with it...
+    def inverse_transform_simple(self, x):
+        if self.methods[self.target] == 'StandardScaler':
+            return self.StandardScaler.inverse_transform(x)
+        elif self.methods[self.target] == 'RobustScaler':
+            return self.RobustScaler.inverse_transform(x)
+        elif self.methods[self.target] == 'ArcSinh':
+            return self.ArcSinh.inverse_transform(x)
+        elif self.methods[self.target] == 'MinMaxScaler':
+            return self.MinMaxScaler.inverse_transform(x)
+        elif self.methods[self.target] == 'MaxAbsScaler':
+            return self.MaxAbsScaler.inverse_transform(x)
+        elif self.methods[self.target] == 'Log1p':
+            return self.Log1p.inverse_transform(x)
+        elif self.methods[self.target] == 'SSA':
+            return self.StandardScaler.inverse_transform(x)
+        elif self.methods[self.target] == 'SSA_decomp':
+            return self.StandardScaler.inverse_transform(x)
+        # Add more methods here
+        elif self.methods[self.target] == 'None':
+            x = x  # Not sure if this is correct
+        else:
+            print('ERROR: Inverse target transformation method not found')
+
 
     def inverse_transform(self, model_configs, rescaled_PIs, ens_p, i):
 
