@@ -260,11 +260,4 @@ class Ensemble():
                 print("Warning: pred_samples, the vector of samples of the JSU distribution contains NaN or Inf")
 
         computed_quantiles = np.quantile(np.concatenate(pred_samples, axis=0), q=settings['target_quantiles'], axis=0)
-
-        # check if there are zeros
-        checkNeg = computed_quantiles < 0
-        if np.any(checkNeg):
-            print(
-                "Warning: computed_quantiles, the vector of quantiles of the JSU distribution contains negative values")
-
         return  np.transpose(computed_quantiles, axes=(1, 2, 0)).reshape(-1, len(settings['target_quantiles']))
