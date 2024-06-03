@@ -313,7 +313,8 @@ class PrTsfRecalibEngine:
 
         return preproc
 
-    def __build_recalib_dataset_batches__(self, df: pd.DataFrame, fit_preproc: bool):
+    def __build_recalib_dataset_batches__(self, df: pd.DataFrame, fit_preproc: bool, cross_vali: bool = True, number_of_folds: int = 5):
+        # TODO: implement the option to use the cross_vali flag and number_of_folds. Also clean the code
         # extract features and target columns from the whole dataframe
         df_feat = df.filter(regex=features_keys['past'] + '|' + features_keys['futu'] + '|' + features_keys['const'])
         df_target = df.filter(regex=features_keys['target'])
@@ -370,24 +371,67 @@ class PrTsfRecalibEngine:
         trainvali_samples_x, trainvali_samples_y = self._win_gen.split_window(recalib_trainvali_samples)
         x_test, y_test = self._win_gen.split_window(recalib_test_sample)
 
-        # Separate samples devoted to train and vali
-        x_train = np.copy(trainvali_samples_x[:-self.data_configs.num_vali_samples])
-        y_train = np.copy(trainvali_samples_y[:-self.data_configs.num_vali_samples])
-        vali_samples_x = np.copy(trainvali_samples_x[-self.data_configs.num_vali_samples:])
-        vali_samples_y = np.copy(trainvali_samples_y[-self.data_configs.num_vali_samples:])
+        if not cross_vali:
+            # Separate samples devoted to train and vali
+            x_train = np.copy(trainvali_samples_x[:-self.data_configs.num_vali_samples])
+            y_train = np.copy(trainvali_samples_y[:-self.data_configs.num_vali_samples])
+            vali_samples_x = np.copy(trainvali_samples_x[-self.data_configs.num_vali_samples:])
+            vali_samples_y = np.copy(trainvali_samples_y[-self.data_configs.num_vali_samples:])
 
-        # shuffle vali samples if required
-        if self.data_configs.shuffle_mode == 'vali':
-            p = np.random.permutation(len(vali_samples_y))
-            vali_samples_x = vali_samples_x[p]
-            vali_samples_y = vali_samples_y[p]
+            # shuffle vali samples if required
+            if self.data_configs.shuffle_mode == 'vali':
+                p = np.random.permutation(len(vali_samples_y))
+                vali_samples_x = vali_samples_x[p]
+                vali_samples_y = vali_samples_y[p]
 
-        # Instantiate recalibration object
-        rec_samples = RecalibSamples(x_test=x_test, y_test=y_test)
-        rec_samples.add_recal_block(x_train=x_train,
-                                    y_train=y_train,
-                                    x_vali=vali_samples_x,
-                                    y_vali=vali_samples_y)
+            # Instantiate recalibration object
+            rec_samples = RecalibSamples(x_test=x_test, y_test=y_test)
+            rec_samples.add_recal_block(x_train=x_train,
+                                        y_train=y_train,
+                                        x_vali=vali_samples_x,
+                                        y_vali=vali_samples_y)
+        # elif cross_vali:
+        #     rec_samples = RecalibSamples(x_test=x_test, y_test=y_test)
+        #     for i in range(0, len(trainvali_samples_x), self.data_configs.num_vali_samples):
+        #         x_train = np.copy(trainvali_samples_x[i:i + self.data_configs.num_vali_samples])
+        #         y_train = np.copy(trainvali_samples_y[i:i + self.data_configs.num_vali_samples])
+        #         vali_samples_x = np.copy(trainvali_samples_x[i + self.data_configs.num_vali_samples:i + 2 * self.data_configs.num_vali_samples])
+        #         vali_samples_y = np.copy(trainvali_samples_y[i + self.data_configs.num_vali_samples:i + 2 * self.data_configs.num_vali_samples])
+        #         rec_samples.add_recal_block(x_train=x_train,
+        #                                     y_train=y_train,
+        #                                     x_vali=vali_samples_x,
+        #                                     y_vali=vali_samples_y)
+        else:
+            print("Cross validation performed!!")
+            # Split trainvali samples into k folds
+            folds = np.array_split(trainvali_samples_x, number_of_folds)
+
+            # Instantiate recalibration object
+            rec_samples = RecalibSamples(x_test=x_test, y_test=y_test)
+
+            # For each fold, add it as a validation set and the remaining folds as a training set
+            for i in range(number_of_folds):
+                x_vali = folds[i]
+                y_vali = trainvali_samples_y[i * len(folds[i]):(i + 1) * len(folds[i])]
+                x_train = np.concatenate(folds[:i] + folds[i + 1:], axis=0)
+                y_train = np.concatenate(
+                    [trainvali_samples_y[:i * len(folds[i])], trainvali_samples_y[(i + 1) * len(folds[i]):]], axis=0)
+
+                rec_samples.add_recal_block(x_train=x_train,
+                                            y_train=y_train,
+                                            x_vali=x_vali,
+                                            y_vali=y_vali)
+                # print("Fold ", i, " added to the recalibration samples")
+                # # show how the data is split
+                # print("x_train shape: ", x_train.shape)
+                # print("y_train shape: ", y_train.shape)
+                # print("x_vali shape: ", x_vali.shape)
+                # print("y_vali shape: ", y_vali.shape)
+                # # show some of the data
+                # print("x_train: ", x_train[0])
+                # print("y_train: ", y_train[0])
+                # print("x_vali: ", x_vali[0])
+                # print("y_vali: ", y_vali[0])
 
         return rec_samples
 
@@ -606,7 +650,8 @@ class PrTsfRecalibEngine:
         study_name = (self.data_configs.task_name
                       + self.model_configs['model_class'] + '-'
                       + self.model_configs['PF_method'] + '_'
-                      + self.model_configs['run_id']
+                      + self.model_configs['run_id'] + '_'
+                      + "1"
                       + '-' + optuna_m)
         storage_name = "sqlite:///db.sqlite3"
 
