@@ -20,16 +20,16 @@ from tools.score_calculator import ScoreCalculator
 # Set PEPF task to execute
 PF_task_name = 'NetLoad'
 # Set Model setup to execute: point_ARX, point-DNN, QR-DNN, N-DNN
-exper_setup = 'JSU-LSTM'
+exper_setup = 'JSU-BiLSTM'
 
 #---------------------------------------------------------------------------------------------------------------------
 # Set run configs
-run_id = 'LSTMv2'
+run_id = 'BiLSTMtest'
 # Set the folder in run_id where the scores are saved
-scores_folder_name = '.'
+scores_folder_name = 'test1'
 scores_path = os.path.join(os.getcwd(), 'experiments', 'tasks', PF_task_name, exper_setup, run_id, scores_folder_name)
 # Load hyperparams from file (select: load_tuned or optuna_tuner)
-hyper_mode = 'optuna_tuner'
+hyper_mode = 'load_tuned'
 # Set the path to the preprocessing configs file
 preprocessing = 'preprocess_configs.json'
 # Plot train history flag
@@ -66,7 +66,7 @@ test_predictions = PrTSF_eng.run_recalibration(model_hyperparams=model_hyperpara
                                                path_history=scores_path,
                                                plot_weights=plot_weights,
                                                print_weights_stats=print_weights_stats,
-                                               recalibFreq=35,
+                                               recalibFreq=400,
                                                load_weights=False)
 
 #--------------------------------------------------------------------------------------------------------------------
@@ -95,6 +95,7 @@ calculator.plot_scores_3d(score_type='pinball')
 calculator.plot_scores_3d(score_type='winkler')
 
 calculator.export_results()
+calculator.export_scores(scores_path)
 
 #--------------------------------------------------------------------------------------------------------------------
 print('Done!')
