@@ -1,2 +1,0 @@
-{"hidden_size": 128, "n_hidden_LSTM_layers": 1, "lr": 0.001, "activation": "tanh", "l1": 1e-3, "l2": 1e-2,
-  "JSU_skewness": 0.6, "JSU_tailweight": 0.001, "JSU_loc": 0, "JSU_Scale": 0.1}

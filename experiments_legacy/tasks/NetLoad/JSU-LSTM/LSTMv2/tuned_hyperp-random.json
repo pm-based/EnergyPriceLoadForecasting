@@ -1,0 +1,2 @@
+{"hidden_size": 512, "n_hidden_LSTM_layers": 2, "lr": 0.001, "l1": 0.001, "l2": 0.001,
+  "JSU_tailweight": 2, "JSU_Scale": 0.01572499578381681}

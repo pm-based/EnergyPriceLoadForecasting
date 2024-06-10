@@ -1,0 +1,36 @@
+Test su un anno di dataset:
+Test 1)
+- Boundaries JSU:
+            mean    min     max
+skewness    0.02   -1.85    1.8
+tailweight  2       1.2     5.5
+scale       0.0157  0.02    0.3
+- "shuffle_mode": "none",
+- recalibFreq=MAI,
+Risultati:
+Pinball Summary of scores:
+4.515468539358155
+
+Winkler Summary of scores:
+269.24052261003914
+
+Delta_coverage Delta Coverage:
+3.730158730158733
+
+
+Test 1)
+- Boundaries JSU:
+            mean    min     max
+skewness    0.02   -1.85    1.8
+tailweight  2       1.2     5.5
+scale       0.0157  0.02    0.3
+- "shuffle_mode": "train_vali",
+- recalibFreq=MAI,
+Pinball Summary of scores:
+4.482767881235694
+
+Winkler Summary of scores:
+248.15898208918773
+
+Delta_coverage Delta Coverage:
+2.616351241351242

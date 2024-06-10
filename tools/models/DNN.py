@@ -44,7 +44,7 @@ class DNNRegressor:
             logit = tf.keras.layers.Dense(self.settings['pred_horiz'] * out_size,
                                           activation='linear')(x)
             output = tf.keras.layers.Reshape((self.settings['pred_horiz'], out_size))(logit)
-            #fix quintile crossing by sorting
+            # fix quintile crossing by sorting
             output = tf.keras.layers.Lambda(lambda x: tf.sort(x, axis=-1))(output)
 
         elif self.settings['PF_method'] == 'Normal':
@@ -66,6 +66,16 @@ class DNNRegressor:
                     tailweight=t[..., self.settings['pred_horiz']:2 * self.settings['pred_horiz']],
                     loc=t[..., 2 * self.settings['pred_horiz']:3 * self.settings['pred_horiz']],
                     scale=1e-3 + tf.math.softplus(t[..., 3 * self.settings['pred_horiz']:])))(logit)
+
+        elif self.settings['PF_method'] == 'tStudent':
+            out_size = 2
+            logit = tf.keras.layers.Dense(self.settings['pred_horiz'] * out_size,
+                                          activation='linear')(x)
+            output = tfp.layers.DistributionLambda(
+                lambda t: tfd.StudentT(
+                    df=1 + tf.math.softplus(0.05 * t[..., :self.settings['pred_horiz']]),
+                    loc=t[..., self.settings['pred_horiz']:2 * self.settings['pred_horiz']],
+                    scale=1e-3 + 3 * tf.math.softplus(0.05 * t[..., 2 * self.settings['pred_horiz']:])))(logit)
 
         else:
             sys.exit('ERROR: unknown PF_method config!')
@@ -167,12 +177,12 @@ class DNNRegressor:
         return settings
 
     @staticmethod
-    def get_hyperparams_searchspace(): # used only for grid search
+    def get_hyperparams_searchspace():  # used only for grid search
         return {'hidden_size': [128, 512],
                 'lr': [1e-4, 1e-3]}
 
     @staticmethod
-    def get_hyperparams_dict_from_configs(configs): # takes params from config file
+    def get_hyperparams_dict_from_configs(configs):  # takes params from config file
         model_hyperparams = {
             'hidden_size': configs['hidden_size'],
             'n_hidden_layers': configs['n_hidden_layers'],

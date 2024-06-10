@@ -1,0 +1,83 @@
+{
+    "data_config": {
+        "dataset_name": "TrainingAndProtoTest.csv",
+        "idx_start_train": {
+            "y": 2014,
+            "m": 1,
+            "d": 2
+        },
+        "idx_start_oos_preds": {
+            "y": 2017,
+            "m": 12,
+            "d": 1
+        },
+        "idx_end_oos_preds": {
+            "y": 2017,
+            "m": 12,
+            "d": 31
+        },
+        "keep_past_train_samples": false,
+        "steps_lag_win": 3,
+        "pred_horiz": 24,
+        "preprocess": "Custom",
+        "shuffle_mode": "train_vali",
+        "num_vali_samples": 100
+    },
+    "model_config": {
+        "PF_method": "JSU",
+        "model_class": "BiLSTM_Parallel2",
+        "optuna_m": "random",
+        "optuna_n_trials": 1,
+        "validation_technique": "standard",
+        "num_folds": 4,
+        "hyperparameter_tuning_metric": "delta_coverage",
+        "target_alpha": [
+            0.01,
+            0.02,
+            0.03,
+            0.04,
+            0.05,
+            0.06,
+            0.07,
+            0.08,
+            0.09,
+            0.10            
+        ],
+        "max_epochs": 300,
+        "batch_size": 128,
+        "patience": 35,
+        "num_ense": 1,
+        "recalibration_frequency": 35
+    },
+    "custom_preprocessing_config": {
+        "features": {
+            "CONST__DoW":                                           "Cyclical7",
+            "CONST__DoY":                                           "Cyclical365",
+            "CONST__Hour":                                          "Cyclical24",
+            "CONST__Holiday":                                       "None",
+            "FUTU__TemperatureRegionalMean":                        "StandardScaler",
+            "FUTU__TemperatureRegionalSd":                          "StandardScaler",
+            "FUTU__TemperatureRegionalMeanWeightedByPopulation":    "StandardScaler",
+            "FUTU__TemperatureInAreaWithMaxPopulation":             "StandardScaler",
+            "FUTU__PrecipitationsRegionalMean":                     "StandardScaler",
+            "FUTU__PrecipitationsRegionalSd":                       "StandardScaler",
+            "FUTU__PrecipitationsRegionalMeanWeightedByPopulation": "StandardScaler",
+            "FUTU__PrecipitationsInAreaWithMaxPopulation":          "StandardScaler",
+            "FUTU__LowCloudCoverageRegionalMean":                   "StandardScaler",
+            "FUTU__LowCloudCoverageRegionalSd":                     "StandardScaler",
+            "FUTU__MediumCloudCoverageRegionalMean":                "StandardScaler",
+            "FUTU__MediumCloudCoverageRegionalSd":                  "StandardScaler",
+            "FUTU__HighCloudCoverageRegionalMean":                  "StandardScaler",
+            "FUTU__HighCloudCoverageRegionalSd":                    "StandardScaler",
+            "FUTU__SolarRadiationRegionalMean":                     "StandardScaler",
+            "FUTU__SolarRadiationRegionalSd":                       "StandardScaler",
+            "FUTU__WindSpeedAt100mRegionalMean":                    "StandardScaler",
+            "FUTU__WindSpeedAt100mRegionalSd":                      "StandardScaler",
+            "FUTU__WindSpeedAt10mRegionalMean":                     "StandardScaler",
+            "FUTU__WindSpeedAt10mRegionalSd":                       "StandardScaler"
+        },
+        "target": {
+            "TARG__NetLoad": "StandardScaler"
+        }
+    }
+}

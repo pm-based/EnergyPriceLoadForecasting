@@ -4,10 +4,26 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tabulate import tabulate
 import os
+import json
+from openpyxl import load_workbook
 
 
 class ScoreCalculator:
-    def __init__(self, y_true, pred_quantiles, quantiles_levels, target_alpha, path_to_save = "."): # TODO: check if is correct ".". It must be a optional arg
+    """
+    Class to compute, display and export the scores of the model.
+
+    Methods:
+    - compute_pinball_scores
+    - compute_winkler_scores
+    - compute_delta_coverage
+    - compute_rmse
+    - display_scores
+    - plot_scores_3d
+    - export_scores
+    - export_results
+    - add_to_score_table
+    """
+    def __init__(self, y_true, pred_quantiles, quantiles_levels, target_alpha, path_to_save="."):
         self.y_true = y_true
         self.pred_quantiles = pred_quantiles
         self.quantiles_levels = quantiles_levels #0.05 0.025     0.01 -> 1-0.01/2
@@ -26,7 +42,7 @@ class ScoreCalculator:
         for i, q in enumerate(self.quantiles_levels):
             error = np.subtract(self.y_true, self.pred_quantiles[:, :, i])
             loss_q = np.maximum(q * error, (q - 1) * error)
-            score.append(np.expand_dims(loss_q,-1))
+            score.append(np.expand_dims(loss_q, -1))
         score = np.mean(np.concatenate(score, axis=-1), axis=0)
         self.pinball_scores = pd.DataFrame(score, columns=self.quantiles_levels, index=range(24))
         return score
@@ -51,6 +67,7 @@ class ScoreCalculator:
 
     def compute_mean_pinball(self):
         return np.mean(self.compute_pinball_scores())
+
     def compute_mean_winkler(self):
         return np.mean(self.compute_winkler_scores())
 
@@ -60,7 +77,7 @@ class ScoreCalculator:
         return: delta coverage computed for each quantile level between 90% and 99% and each step in the pred horizon
         """
         delta = []
-        confidence_levels = np.subtract(1, self.target_alpha) # 0.99 0.98 0.97 ... 0.90
+        confidence_levels = np.subtract(1, self.target_alpha)  # 0.99 0.98 0.97 ... 0.90
         for i, q in enumerate(self.quantiles_levels[:len(self.quantiles_levels)//2]):
             l_hat = self.pred_quantiles[:, :, i]
             u_hat = self.pred_quantiles[:, :, -i-1]
@@ -68,9 +85,19 @@ class ScoreCalculator:
             EC_alpha_i = np.mean(I_t)
             delta_i = np.abs(EC_alpha_i - confidence_levels[i])
             delta.append(np.expand_dims(delta_i, -1))
-        score = np.sum(delta)/((confidence_levels[0] - confidence_levels[-1]))
+        # print("Delta: ", delta)
+        score = np.sum(delta)/(confidence_levels[0] - confidence_levels[-1])
         self.delta_coverage = score
         return score
+
+    def compute_rmse(self):
+        """
+        Utility function to compute the RMSE on the test results
+        return: RMSE computed for each step in the pred horizon
+        """
+        y_median = self.pred_quantiles[:, :, len(self.quantiles_levels) // 2]
+        rmse = np.sqrt(np.mean(np.square(np.subtract(self.y_true, y_median))))
+        return rmse
 
     def display_scores(self, score_type='pinball', table=False, heatmap=False, summary=True):
         """
@@ -85,10 +112,12 @@ class ScoreCalculator:
             x_labels = [1 - 2 * q for q in self.quantiles_levels[:len(self.quantiles_levels) // 2]]
         elif score_type == 'delta_coverage':
             scores = self.delta_coverage
+        elif score_type == 'rmse':
+            scores = self.compute_rmse()
         else:
             print("Invalid score type. Choose 'pinball' or 'winkler'.")
             return
-        # TODO: add check if is delta cov then table and heatmap are not available
+
         # Display the scores in a table
         if table:
             print(f'\n{score_type.capitalize()} Scores:\n')
@@ -99,16 +128,15 @@ class ScoreCalculator:
             plt.figure(figsize=(16, 13))
             sns.heatmap(scores, cmap='viridis', annot=True, fmt=".3f", annot_kws={"size": 5})
             plt.xticks(np.arange(len(x_labels)), x_labels, rotation=90)
-            plt.xlabel('Quantile Levels')  # Add x-axis label
-            plt.ylabel('Hours')  # Add y-axis label
-            plt.title(f'{score_type.capitalize()} Scores')  # Add title
+            plt.xlabel('Quantile Levels')
+            plt.ylabel('Hours')
+            plt.title(f'{score_type.capitalize()} Scores')
             plt.show()
 
         if summary:
-            if score_type == 'delta_coverage':
-                print(f'\n{score_type.capitalize()} Delta Coverage: ')
+            if score_type == 'delta_coverage' or score_type == 'rmse':
+                print(f'\n{score_type.capitalize()}: ')
                 print(scores)
-
             else:
                 print(f'\n{score_type.capitalize()} Summary of scores: ')
                 print(np.mean(scores))
@@ -170,3 +198,55 @@ class ScoreCalculator:
         self.export_scores(self.path_to_save)
         self.plot_scores_3d(score_type='pinball', export=True, folder_path=self.path_to_save)
         self.plot_scores_3d(score_type='winkler', export=True, folder_path=self.path_to_save)
+
+    def add_to_score_table(self, path_to_table, configs):
+        """
+        Add the configurations of the experiment and the scores to the main score table
+        """
+        file_path = os.path.join(path_to_table, 'scores_table.xlsx')
+        if not os.path.exists(file_path):
+            # Create a new DataFrame
+            df = pd.DataFrame()
+            # Put the three scores as names of the first three columns
+            df['delta_coverage'] = np.NaN
+            df['pinball_scores'] = np.NaN
+            df['winkler_scores'] = np.NaN
+            df['rmse'] = np.NaN
+            # Save the DataFrame to an Excel file
+            df.to_excel(file_path, index=False, engine='openpyxl')
+
+        # Read the Excel file
+        df = pd.read_excel(file_path, engine='openpyxl')
+
+        # Get the new row
+        row = len(df)
+
+        # Put the scores in the last row of the DataFrame
+        df.loc[row, 'delta_coverage'] = self.delta_coverage
+        df.loc[row, 'pinball_scores'] = np.mean(self.pinball_scores)
+        df.loc[row, 'winkler_scores'] = np.mean(self.winkler_scores)
+        df.loc[row, 'rmse'] = self.compute_rmse()
+
+        # Iterate on the configurations
+        for key, value in configs['data_config'].__dict__.items():
+            # if the key is not in the DataFrame, add it
+            if key not in df.columns:
+                df[key] = np.NaN
+            # add the value to the last row
+            df.loc[row, key] = value
+
+        for key, value in configs['model_config'].items():
+            # check if the value is not a list first
+            if not isinstance(value, list) and not isinstance(value, dict):
+                # if the key is not in the DataFrame, add it
+                if key not in df.columns:
+                    df[key] = np.NaN
+                # add the value to the last row
+                df.loc[row, key] = value
+            else:
+                continue
+
+        # Save the DataFrame back to the Excel file
+        df.to_excel(file_path, index=False, engine='openpyxl')
+
+        print('Scores added to the table!')

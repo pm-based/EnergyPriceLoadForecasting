@@ -1,0 +1,34 @@
+{
+    "data_config": {
+        "dataset_name": "LF_bench_0.csv",
+        "target": "TARG__NetLoad"
+    },
+    "methods": {
+        "CONST__DoW":                                             "StandardScaler",
+        "CONST__DoY":                                             "StandardScaler",
+        "CONST__Holiday":                                         "StandardScaler",
+        "FUTU__TemperatureRegionalMean":                          "StandardScaler",
+        "FUTU__TemperatureRegionalSd":                            "StandardScaler",
+        "FUTU__TemperatureRegionalMeanWeightedByPopulation":      "StandardScaler",
+        "FUTU__TemperatureInAreaWithMaxPopulation":               "StandardScaler",
+        "FUTU__PrecipitationsRegionalMean":                       "StandardScaler",
+        "FUTU__PrecipitationsRegionalSd":                         "StandardScaler",
+        "FUTU__PrecipitationsRegionalMeanWeightedByPopulation":   "StandardScaler",
+        "FUTU__PrecipitationsInAreaWithMaxPopulation":            "StandardScaler",
+        "FUTU__LowCloudCoverageRegionalMean":                     "StandardScaler",
+        "FUTU__LowCloudCoverageRegionalSd":                       "StandardScaler",
+        "FUTU__MediumCloudCoverageRegionalMean":                  "StandardScaler",
+        "FUTU__MediumCloudCoverageRegionalSd":                    "StandardScaler",
+        "FUTU__HighCloudCoverageRegionalMean":                    "StandardScaler",
+        "FUTU__HighCloudCoverageRegionalSd":                      "StandardScaler",
+        "FUTU__SolarRadiationRegionalMean":                       "StandardScaler",
+        "FUTU__SolarRadiationRegionalSd":                         "StandardScaler",
+        "FUTU__WindSpeedAt100mRegionalMean":                      "StandardScaler",
+        "FUTU__WindSpeedAt100mRegionalSd":                        "StandardScaler",
+        "FUTU__WindSpeedAt10mRegionalMean":                       "StandardScaler",
+        "FUTU__WindSpeedAt10mRegionalSd":                         "StandardScaler",
+        "TARG__NetLoad":                                          "SSA_decomp"
+    },
+    "target_method": "StandardScaler"
+
+}

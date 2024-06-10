@@ -23,11 +23,10 @@ import optuna
 from optuna.integration import TFKerasPruningCallback
 from optuna.trial import TrialState
 import tensorflow as tf
-from tools.prediction_quantiles_tools import plot_quantiles
 
 from tools.data_utils import columns_keys, features_keys
 from tools.models.models_tools import regression_model, Ensemble, get_model_class_from_conf
-from tools.data_preprocess.preprocessing_tools import Preprocessor
+from tools.preprocessing_tools import Preprocessor
 from tools.score_calculator import ScoreCalculator
 
 
@@ -115,8 +114,7 @@ class PrTsfDataloaderConfigs:
     Class used to handle the dataloader configuration
     """
     def __init__(self,
-                 task_name: str,
-                 exper_setup: str,
+                 experiment_type: str,
                  dataset_name:str,
                  idx_start_train: Union[int, date],
                  idx_start_oos_preds: Union[int, date],
@@ -128,8 +126,7 @@ class PrTsfDataloaderConfigs:
                  keep_past_train_samples: bool=True,
                  shuffle_mode: str='none'
                  ):
-        self.task_name = task_name
-        self.exper_setup = exper_setup
+        self.experiment_type = experiment_type
         self.dataset_name = dataset_name
         self.idx_start_train = idx_start_train
         self.idx_start_oos_preds = idx_start_oos_preds
@@ -142,12 +139,11 @@ class PrTsfDataloaderConfigs:
         self.shuffle_mode = shuffle_mode
 
 
-#
-def load_data_model_configs(task_name: str, exper_setup: str, run_id: str):
+def load_data_model_configs(experiment_type: str, model_type: str, experiment_id: str):
     """
     Load experiment configurations from json and build the handler object
     """
-    path = os.path.join(os.getcwd(), 'experiments', 'tasks', task_name, exper_setup, run_id,'exper_configs.json')
+    path = os.path.join(os.getcwd(), 'experiments', experiment_type, model_type, experiment_id, 'exper_configs.json')
     # Load experiment settings from json
     with open(path) as f:
         expe_confs = json.load(f)
@@ -162,34 +158,23 @@ def load_data_model_configs(task_name: str, exper_setup: str, run_id: str):
                                                           month=expe_confs['data_config']['idx_end_oos_preds']['m'],
                                                           day=expe_confs['data_config']['idx_end_oos_preds']['d'])
     # Store exper run id
-    expe_confs['model_config']['run_id'] = run_id
+    expe_confs['model_config']['run_id'] = experiment_id
 
     # Append running experiments configs
-    data_configs = PrTsfDataloaderConfigs(
-        task_name=task_name,
-        exper_setup=exper_setup,
-        dataset_name=expe_confs['data_config']['dataset_name'],
-        idx_start_train=expe_confs['data_config']['idx_start_train'],
-        idx_start_oos_preds=expe_confs['data_config']['idx_start_oos_preds'],
-        idx_end_oos_preds=expe_confs['data_config']['idx_end_oos_preds'],
-        num_vali_samples=expe_confs['data_config']['num_vali_samples'],
-        steps_lag_win=expe_confs['data_config']['steps_lag_win'],
-        pred_horiz=expe_confs['data_config']['pred_horiz'],
-        preprocess=expe_confs['data_config']['preprocess'],
-        keep_past_train_samples=expe_confs['data_config']['keep_past_train_samples'],
-        shuffle_mode=expe_confs['data_config']['shuffle_mode'],
-    )
+    data_configs = PrTsfDataloaderConfigs(experiment_type=experiment_type,
+                                          dataset_name=expe_confs['data_config']['dataset_name'],
+                                          idx_start_train=expe_confs['data_config']['idx_start_train'],
+                                          idx_start_oos_preds=expe_confs['data_config']['idx_start_oos_preds'],
+                                          idx_end_oos_preds=expe_confs['data_config']['idx_end_oos_preds'],
+                                          num_vali_samples=expe_confs['data_config']['num_vali_samples'],
+                                          steps_lag_win=expe_confs['data_config']['steps_lag_win'],
+                                          pred_horiz=expe_confs['data_config']['pred_horiz'],
+                                          preprocess=expe_confs['data_config']['preprocess'],
+                                          keep_past_train_samples=expe_confs['data_config']['keep_past_train_samples'],
+                                          shuffle_mode=expe_confs['data_config']['shuffle_mode'])
     return {'data_config': data_configs,
-            'model_config': expe_confs['model_config']}
-
-def load_preproc_configs(preproc_configs_file: str):
-    """
-    Load preprocessing configurations from json file
-    """
-    preproc_configs_file_path = os.path.join(os.getcwd(), 'tools', 'data_preprocess', preproc_configs_file)
-    with open(preproc_configs_file_path, 'r') as file:
-        configs = json.load(file)
-    return configs
+            'model_config': expe_confs['model_config'],
+            'custom_preprocessing_config': expe_confs['custom_preprocessing_config']}
 
 
 class PrTsfRecalibEngine:
@@ -199,18 +184,17 @@ class PrTsfRecalibEngine:
     def __init__(self, dataset,
                  data_configs: PrTsfDataloaderConfigs,
                  model_configs: Dict,
-                 preproc_configs: Dict):
+                 custom_preproc_configs: Dict):
 
         self.data_configs = data_configs
         # load dataset csv file
-        #self.dataset = self.__load_dataset_from_file__(dataset_name=data_configs.dataset_name)
-        self.dataset=dataset
+        self.dataset = dataset
         # store the samples involved in the configured experimental period (between start_train and oos_end) and reindex
         self.__store_reindexed_dataset__(data_configs=data_configs)
         # build test samples idxs used by the recalibration iterator
         self.test_set_idxs = self.__build_test_samples_idxs__()
         # instantiate preprocessing_objs
-        self.preproc_configs = preproc_configs
+        self.custom_preproc_configs = custom_preproc_configs
         self.preproc = self.__instantiate_preproc__()
 
         # store model configs and add internal confs automatically
@@ -241,10 +225,10 @@ class PrTsfRecalibEngine:
         Get the global idx related to the input date.
         Mode: 'start': return the idx of first sub_step; 'end': return the idx of first sub_step
         """
-        date_idxs= self.dataset[self.dataset[columns_keys['Date']]== date_id.strftime('%Y-%m-%d')].index.tolist()
-        if mode=='start':
+        date_idxs = self.dataset[self.dataset[columns_keys['Date']] == date_id.strftime('%Y-%m-%d')].index.tolist()
+        if mode == 'start':
             global_idx = date_idxs[0]
-        elif mode=='end':
+        elif mode == 'end':
             global_idx = date_idxs[-1]
         else:
             sys.exit('ERROR: selected mode do not exist')
@@ -276,8 +260,8 @@ class PrTsfRecalibEngine:
         # Reindex dataset and store updated idxs in configs
         #self.dataset[columns_keys['idx_global']] = np.arange(len(self.dataset))
         #self.dataset[columns_keys['idx_step']] = np.arange(stop=len(self.dataset)) // self.data_configs.pred_horiz
-        self.dataset.loc[:,[columns_keys['idx_global']]] = np.arange(len(self.dataset))
-        self.dataset.loc[:,[columns_keys['idx_step']]] = np.arange(stop=len(self.dataset)) // self.data_configs.pred_horiz
+        self.dataset.loc[:, [columns_keys['idx_global']]] = np.arange(len(self.dataset))
+        self.dataset.loc[:, [columns_keys['idx_step']]] = np.arange(stop=len(self.dataset)) // self.data_configs.pred_horiz
         init_global_idx = self.dataset.index.tolist()[0]
         self.data_configs.idx_start_train = self.data_configs.idx_start_train - init_global_idx
         self.data_configs.idx_start_oos_preds = self.data_configs.idx_start_oos_preds - init_global_idx
@@ -292,7 +276,7 @@ class PrTsfRecalibEngine:
 
     def __instantiate_preproc__(self):
         if self.data_configs.preprocess == 'Custom':
-            preproc = Preprocessor(preproc_configs=self.preproc_configs)
+            preproc = Preprocessor(custom_preproc_configs=self.custom_preproc_configs)
         elif self.data_configs.preprocess == 'StandardScaler':
             preproc = {
                 'feat': StandardScaler(),
@@ -313,21 +297,25 @@ class PrTsfRecalibEngine:
 
         return preproc
 
-    def __build_recalib_dataset_batches__(self, df: pd.DataFrame, fit_preproc: bool, cross_vali: bool = True, number_of_folds: int = 5):
-        # TODO: implement the option to use the cross_vali flag and number_of_folds. Also clean the code
+    def __build_recalib_dataset_batches__(self, df: pd.DataFrame, fit_preproc: bool):
+        """
+        Build the recalibration dataset batches
+        """
+        validation_technique = self.model_configs['validation_technique']
+
         # extract features and target columns from the whole dataframe
         df_feat = df.filter(regex=features_keys['past'] + '|' + features_keys['futu'] + '|' + features_keys['const'])
         df_target = df.filter(regex=features_keys['target'])
 
         if self.data_configs.preprocess != 'Custom':
-        # Fit preprocessing objects using the series steps before the pred_horiz (i.e., the recalibration test sample)
+            # Fit preprocessing objects using the series steps before the pred_horiz (i.e., the recalibration test sample)
             if fit_preproc:
                 self.preproc['feat'].fit(df_feat[:-self.data_configs.pred_horiz])
                 self.preproc['target'].fit(df_target[:-self.data_configs.pred_horiz])
                 # Transform the series by preprocessing objects
             np_feat_scaled = self.preproc['feat'].transform(df_feat)
             np_target_scaled = self.preproc['target'].transform(df_target)
-                # Build scaled df
+            # Build scaled df
             df_feat_scaled = pd.DataFrame(data=np_feat_scaled,
                                           index=df.index,
                                           columns=df_feat.columns)
@@ -337,8 +325,7 @@ class PrTsfRecalibEngine:
             df_scaled = pd.concat([df_target_scaled, df_feat_scaled], axis=1)
         else:
             df_target_feat = pd.concat([df_target, df_feat], axis=1)
-            self.preproc.load_data(df_target_feat)
-            df_scaled = self.preproc.preprocess_data(pred_horiz=self.data_configs.pred_horiz)
+            df_scaled = self.preproc.preprocess_data(data=df_target_feat, pred_horiz=self.data_configs.pred_horiz)
 
         # store x columns names
         self.x_columns_names = df_scaled.columns.tolist()
@@ -371,7 +358,27 @@ class PrTsfRecalibEngine:
         trainvali_samples_x, trainvali_samples_y = self._win_gen.split_window(recalib_trainvali_samples)
         x_test, y_test = self._win_gen.split_window(recalib_test_sample)
 
-        if not cross_vali:
+        # Instantiate recalibration object
+        rec_samples = RecalibSamples(x_test=x_test, y_test=y_test)
+
+        if validation_technique == 'k_fold':
+            # Split trainvali samples into k folds
+            folds = np.array_split(trainvali_samples_x, self.model_configs['num_folds'])
+
+            # For each fold, add it as a validation set and the remaining folds as a training set
+            for i in range(self.model_configs['num_folds']):
+                x_vali = folds[i]
+                y_vali = trainvali_samples_y[i * len(folds[i]):(i + 1) * len(folds[i])]
+                x_train = np.concatenate(folds[:i] + folds[i + 1:], axis=0)
+                y_train = np.concatenate(
+                    [trainvali_samples_y[:i * len(folds[i])], trainvali_samples_y[(i + 1) * len(folds[i]):]], axis=0)
+
+                rec_samples.add_recal_block(x_train=x_train,
+                                            y_train=y_train,
+                                            x_vali=x_vali,
+                                            y_vali=y_vali)
+
+        else:
             # Separate samples devoted to train and vali
             x_train = np.copy(trainvali_samples_x[:-self.data_configs.num_vali_samples])
             y_train = np.copy(trainvali_samples_y[:-self.data_configs.num_vali_samples])
@@ -384,54 +391,10 @@ class PrTsfRecalibEngine:
                 vali_samples_x = vali_samples_x[p]
                 vali_samples_y = vali_samples_y[p]
 
-            # Instantiate recalibration object
-            rec_samples = RecalibSamples(x_test=x_test, y_test=y_test)
             rec_samples.add_recal_block(x_train=x_train,
                                         y_train=y_train,
                                         x_vali=vali_samples_x,
                                         y_vali=vali_samples_y)
-        # elif cross_vali:
-        #     rec_samples = RecalibSamples(x_test=x_test, y_test=y_test)
-        #     for i in range(0, len(trainvali_samples_x), self.data_configs.num_vali_samples):
-        #         x_train = np.copy(trainvali_samples_x[i:i + self.data_configs.num_vali_samples])
-        #         y_train = np.copy(trainvali_samples_y[i:i + self.data_configs.num_vali_samples])
-        #         vali_samples_x = np.copy(trainvali_samples_x[i + self.data_configs.num_vali_samples:i + 2 * self.data_configs.num_vali_samples])
-        #         vali_samples_y = np.copy(trainvali_samples_y[i + self.data_configs.num_vali_samples:i + 2 * self.data_configs.num_vali_samples])
-        #         rec_samples.add_recal_block(x_train=x_train,
-        #                                     y_train=y_train,
-        #                                     x_vali=vali_samples_x,
-        #                                     y_vali=vali_samples_y)
-        else:
-            print("Cross validation performed!!")
-            # Split trainvali samples into k folds
-            folds = np.array_split(trainvali_samples_x, number_of_folds)
-
-            # Instantiate recalibration object
-            rec_samples = RecalibSamples(x_test=x_test, y_test=y_test)
-
-            # For each fold, add it as a validation set and the remaining folds as a training set
-            for i in range(number_of_folds):
-                x_vali = folds[i]
-                y_vali = trainvali_samples_y[i * len(folds[i]):(i + 1) * len(folds[i])]
-                x_train = np.concatenate(folds[:i] + folds[i + 1:], axis=0)
-                y_train = np.concatenate(
-                    [trainvali_samples_y[:i * len(folds[i])], trainvali_samples_y[(i + 1) * len(folds[i]):]], axis=0)
-
-                rec_samples.add_recal_block(x_train=x_train,
-                                            y_train=y_train,
-                                            x_vali=x_vali,
-                                            y_vali=y_vali)
-                # print("Fold ", i, " added to the recalibration samples")
-                # # show how the data is split
-                # print("x_train shape: ", x_train.shape)
-                # print("y_train shape: ", y_train.shape)
-                # print("x_vali shape: ", x_vali.shape)
-                # print("y_vali shape: ", y_vali.shape)
-                # # show some of the data
-                # print("x_train: ", x_train[0])
-                # print("y_train: ", y_train[0])
-                # print("x_vali: ", x_vali[0])
-                # print("y_vali: ", y_vali[0])
 
         return rec_samples
 
@@ -487,8 +450,8 @@ class PrTsfRecalibEngine:
         """
         returns the experiment path
         """
-        return os.path.join(os.getcwd(), 'experiments', 'tasks', self.data_configs.task_name,
-                            self.data_configs.exper_setup, self.model_configs['run_id'])
+        return os.path.join(os.getcwd(), 'experiments', self.data_configs.experiment_type,
+                            self.model_configs['model_class'], self.model_configs['run_id'])
 
 
     def __save_results__(self, test_results_df):
@@ -503,130 +466,98 @@ class PrTsfRecalibEngine:
         with open(exper_save_path + '/recalib_test_results-tuned-' + self.optuna_m + '.p', 'wb') as f:
             pickle.dump(test_results_df, f)
 
-
-    def run_hyperparams_tuning(self, optuna_m:str='random', n_trials: int=50, evaluate_scores = False):
+    def run_hyperparams_tuning(self, optuna_m: str = 'random', n_trials: int = 50):
         """
         Model hyperparameters tuning routine
         """
 
         def objective(trial):
+            """
+            Objective function for hyperparameter tuning
+            """
+            def compute_validation_loss(trial):
+                """
+                Computes the validation loss based on the metric that we want to use
+                """
+                if self.model_configs['hyperparameter_tuning_metric'] == 'val_loss':
+                    # standard evaluation metric
+                    return model.evaluate(x=train_vali_block_k.x_vali, y=train_vali_block_k.y_vali)
+                elif self.model_configs['hyperparameter_tuning_metric'] == 'delta_coverage':
+                    settings = {**self.model_configs}
+                    ensemble = Ensemble(settings=settings)
+                    pred = []
+                    pred.append(model.predict(x=train_vali_block_k.x_vali))
+                    pred = ensemble.aggregate_preds(pred)
+
+                    trial = ensemble.get_JSU_params(pred, trial=trial)
+
+                    pred = ensemble.get_preds_test_quantiles(preds_test=pred)
+
+                    rescaled_PIs = {}
+                    for i in range(pred.shape[-1]):
+                        if self.data_configs.preprocess != 'Custom':
+                            rescaled_PIs[self.model_configs['target_quantiles'][i]] = self.preproc[
+                                                                                          'target'].inverse_transform(
+                                pred[:, i:i + 1])[:, 0]
+                        else:
+                            rescaled_PIs = self.preproc.inverse_transform(
+                                model_configs=self.model_configs, rescaled_PIs=rescaled_PIs, ens_p=pred, i=i)
+                    results_df = pd.DataFrame(rescaled_PIs)
+                    results_PIs = []
+                    results_PIs.append(results_df)
+                    results = pd.concat(results_PIs, axis=0)
+
+                    pred_steps = self.data_configs.pred_horiz
+                    quantiles_levels = self.model_configs['target_quantiles']
+
+                    if self.data_configs.preprocess != 'Custom':
+                        y_true = self.preproc['target'].inverse_transform(train_vali_block_k.y_vali)
+                    else:
+                        y_vali_reshaped = train_vali_block_k.y_vali.reshape(-1, 1)
+                        y_vali_transformed = self.preproc.inverse_transform(model_configs=self.model_configs,
+                                                                            rescaled_PIs={},
+                                                                            ens_p=y_vali_reshaped,
+                                                                            i=0, is_y_true=True)
+                        y_vali_transformed_list = list(y_vali_transformed.values())[0]
+                        y_true = y_vali_transformed_list.reshape(train_vali_block_k.y_vali.shape)
+
+                    cal = ScoreCalculator(y_true=y_true.reshape(-1, pred_steps),
+                                          pred_quantiles=results.to_numpy().reshape(-1, pred_steps,
+                                                                                    len(quantiles_levels)),
+                                          quantiles_levels=quantiles_levels,
+                                          target_alpha=self.model_configs['target_alpha'])
+
+                    trial.set_user_attr("pinball score", cal.compute_mean_pinball())
+                    trial.set_user_attr("winkler score", cal.compute_mean_winkler())
+                    trial.set_user_attr("loss func",
+                                        model.evaluate(x=train_vali_block_k.x_vali, y=train_vali_block_k.y_vali))
+
+                    return cal.compute_delta_coverage()
             # Clear clutter from previous session graphs.
             tf.keras.backend.clear_session()
             # Update model configs with hyperparams trial
             self.model_configs = self.model_class.get_hyperparams_trial(trial=trial, settings=self.model_configs)
 
-            # Build model using the current configs
-            model = regression_model(settings=self.model_configs,
-                                     sample_x=train_vali_block.x_vali[0:1])
+            metrics = []
+            for k in range(self.model_configs['num_folds']):
+                train_vali_block_k = train_vali_block.recalibBlocks[k]
 
-            # Train model
-            model.fit(train_x=train_vali_block.x_train, train_y=train_vali_block.y_train,
-                      val_x=train_vali_block.x_vali, val_y=train_vali_block.y_vali,
-                      pruning_call=TFKerasPruningCallback(trial, "val_loss"),
-                      plot_history=False)
+                # Build model using the current configs
+                model = regression_model(settings=self.model_configs,
+                                         sample_x=train_vali_block_k.x_vali[0:1])
 
-            # Compute val loss
-            # TODO: Implement suppor to add additional metrics in optuna.
-            # Check result also for probabilistic forecasting
-            metrics = model.evaluate(x=train_vali_block.x_vali, y=train_vali_block.y_vali)
-            #results = metrics[0]
-            return metrics
+                # Train model
+                model.fit(train_x=train_vali_block_k.x_train, train_y=train_vali_block_k.y_train,
+                          val_x=train_vali_block_k.x_vali, val_y=train_vali_block_k.y_vali,
+                          pruning_call=TFKerasPruningCallback(trial, "val_loss"),
+                          plot_history=False, verbose=2)
 
-        def objective_score(trial):
-            # Clear clutter from previous session graphs.
-            tf.keras.backend.clear_session()
-            # Update model configs with hyperparams trial
-            self.model_configs = self.model_class.get_hyperparams_trial(trial=trial, settings=self.model_configs)
+                # Compute val loss
+                metrics.append(compute_validation_loss(trial))
+                if self.model_configs["validation_technique"] != 'k_fold':
+                    break
 
-            # Build model using the current configs
-            model = regression_model(settings=self.model_configs,
-                                     sample_x=train_vali_block.x_vali[0:1])
-
-            # Train model
-            model.fit(train_x=train_vali_block.x_train, train_y=train_vali_block.y_train,
-                      val_x=train_vali_block.x_vali, val_y=train_vali_block.y_vali,
-                      pruning_call=TFKerasPruningCallback(trial, "val_loss"),
-                      plot_history=False)
-
-            settings = {**self.model_configs}
-            ensemble = Ensemble(settings=settings)
-            pred = []
-            pred.append(model.predict(x=train_vali_block.x_vali))
-            pred = ensemble.aggregate_preds(pred)
-
-            # Calculate means
-            mean_skewness = np.mean(pred[:, :, 0, 0])
-            mean_tailweight = np.mean(pred[:, :, 0, 1])
-            mean_loc = np.mean(pred[:, :, 0, 2])
-            mean_scale = np.mean(pred[:, :, 0, 3])
-
-            # Calculate maxima
-            max_skewness = np.max(pred[:, :, 0, 0])
-            max_tailweight = np.max(pred[:, :, 0, 1])
-            max_loc = np.max(pred[:, :, 0, 2])
-            max_scale = np.max(pred[:, :, 0, 3])
-
-            # Calculate minima
-            min_skewness = np.min(pred[:, :, 0, 0])
-            min_tailweight = np.min(pred[:, :, 0, 1])
-            min_loc = np.min(pred[:, :, 0, 2])
-            min_scale = np.min(pred[:, :, 0, 3])
-
-            pred = ensemble.get_preds_test_quantiles(preds_test=pred)
-
-            rescaled_PIs = {}
-            pred_steps = self.data_configs.pred_horiz
-            quantiles_levels = self.model_configs['target_quantiles']
-            for i in range(pred.shape[-1]):
-                if self.data_configs.preprocess != 'Custom':
-                    rescaled_PIs[self.model_configs['target_quantiles'][i]] = self.preproc[
-                                                                                  'target'].inverse_transform(
-                        pred[:, i:i + 1])[:, 0]
-                else:
-                    rescaled_PIs = self.preproc.inverse_transform(
-                        model_configs=self.model_configs, rescaled_PIs=rescaled_PIs, ens_p=pred, i=i)
-            results_df = pd.DataFrame(rescaled_PIs)
-            results_PIs = []
-            results_PIs.append(results_df)
-            results = pd.concat(results_PIs, axis=0)
-            # test_results_df = self.__transform_test_results__(results_df)
-
-            pred_steps = self.data_configs.pred_horiz
-            quantiles_levels = self.model_configs['target_quantiles']
-
-            if self.data_configs.preprocess != 'Custom':
-                y_true = self.preproc['target'].inverse_transform(train_vali_block.y_vali)
-            else:
-                y_true = self.preproc.inverse_transform_simple(train_vali_block.y_vali)
-
-            cal = ScoreCalculator(y_true=y_true.reshape(-1, pred_steps),
-                                  pred_quantiles=results.to_numpy().reshape(-1, pred_steps, len(quantiles_levels)),
-                                  quantiles_levels=quantiles_levels,
-                                  target_alpha=self.model_configs['target_alpha'])
-
-            trial.set_user_attr("pinball score", cal.compute_mean_pinball())
-            trial.set_user_attr("winkler score", cal.compute_mean_winkler())
-            trial.set_user_attr("loss func", model.evaluate(x=train_vali_block.x_vali, y=train_vali_block.y_vali))
-
-            # Set user attributes for means
-            trial.set_user_attr("mean skewness", mean_skewness.astype(np.float64))
-            trial.set_user_attr("mean tailweight", mean_tailweight.astype(np.float64))
-            trial.set_user_attr("mean loc", mean_loc.astype(np.float64))
-            trial.set_user_attr("mean scale", mean_scale.astype(np.float64))
-
-            # Set user attributes for maxima
-            trial.set_user_attr("max skewness", max_skewness.astype(np.float64))
-            trial.set_user_attr("max tailweight", max_tailweight.astype(np.float64))
-            trial.set_user_attr("max loc", max_loc.astype(np.float64))
-            trial.set_user_attr("max scale", max_scale.astype(np.float64))
-
-            # Set user attributes for minima
-            trial.set_user_attr("min skewness", min_skewness.astype(np.float64))
-            trial.set_user_attr("min tailweight", min_tailweight.astype(np.float64))
-            trial.set_user_attr("min loc", min_loc.astype(np.float64))
-            trial.set_user_attr("min scale", min_scale.astype(np.float64))
-
-            return cal.compute_delta_coverage()
+            return sum(metrics)/len(metrics)
 
         # start from first train sample
         init_sample = 0
@@ -634,7 +565,7 @@ class PrTsfRecalibEngine:
         test_sample_idx = self.test_set_idxs[0]
         train_vali_block = self.__build_recalib_dataset_batches__(
             self.dataset[init_sample:test_sample_idx + self.data_configs.pred_horiz],
-            fit_preproc=True).recalibBlocks[0]
+            fit_preproc=True)
 
         if optuna_m == 'grid_search':
             search_space = self.model_class.get_hyperparams_searchspace()
@@ -647,12 +578,10 @@ class PrTsfRecalibEngine:
         # Add stream handler of stdout to show the messages
         optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
         # Unique identifier of the study.
-        study_name = (self.data_configs.task_name
+        study_name = (self.data_configs.experiment_type + '-'
                       + self.model_configs['model_class'] + '-'
-                      + self.model_configs['PF_method'] + '_'
                       + self.model_configs['run_id'] + '_'
-                      + "1"
-                      + '-' + optuna_m)
+                      + optuna_m)
         storage_name = "sqlite:///db.sqlite3"
 
         study = optuna.create_study(direction="minimize",
@@ -664,10 +593,7 @@ class PrTsfRecalibEngine:
                                     )
 
         timeout = 3600 * 24.0 * 7  # 7 days
-        if evaluate_scores:
-            study.optimize(objective_score, n_trials=n_trials, timeout=timeout)
-        else:
-            study.optimize(objective, n_trials=n_trials, timeout=timeout)
+        study.optimize(objective, n_trials=n_trials, timeout=timeout)
         pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
         complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
         print("Study statistics: ")
@@ -687,7 +613,7 @@ class PrTsfRecalibEngine:
 
         return self.model_class.get_hyperparams_dict_from_configs(self.model_configs)
 
-    def get_model_hyperparams(self, method, optuna_m='random', evaluate_scores = False):
+    def get_model_hyperparams(self, method, optuna_m='random'):
         self.optuna_m = optuna_m
         self.hyper_mode = method
         path = os.path.join(self.get_exper_path(), 'tuned_hyperp-' + optuna_m + '.json')
@@ -701,7 +627,8 @@ class PrTsfRecalibEngine:
         elif method=='optuna_tuner':
             print('-----------------------------------------')
             print('Starting optuna tuner')
-            model_hyperparams= self.run_hyperparams_tuning(optuna_m=optuna_m, evaluate_scores = evaluate_scores)
+            model_hyperparams = self.run_hyperparams_tuning(optuna_m=optuna_m,
+                                                            n_trials=self.model_configs['optuna_n_trials'])
             print('-----------------------------------------')
             # save model hyperparams to json
             with open(path, 'w') as f:
@@ -710,7 +637,8 @@ class PrTsfRecalibEngine:
         else:
             sys.exit('ERROR: uknown hyperparam method')
 
-    def run_recalibration(self, model_hyperparams:Dict, plot_history=False, path_history=None, plot_weights=False, print_weights_stats=False, recalibFreq = 1, load_weights = False):
+    def run_recalibration(self, model_hyperparams: Dict, plot_history=False, path_history=None, plot_weights=False,
+                          print_weights_stats=False, load_weights=False, restore_weights_at_recalib=False):
         """
         Main recalibration loop
         """
@@ -718,16 +646,24 @@ class PrTsfRecalibEngine:
         print('Starting recalibration of config: ' + str(self.model_configs['PF_method']))
         print('------------------------------------------------------------------------------')
 
-        # recalib counter
-        if load_weights:
-            time_to_recalib = -1 #TODO: add a control to check if exist saved weigths.
-        else:
-            time_to_recalib = 0
-        saved_weigths_path = os.path.join(self.get_exper_path(), 'models_weights')
-
-        # Crea il percorso se non esiste già
+        saved_weigths_path = os.path.join(path_history, 'models_weights')
+        # Create the folder to store the recalibration weights, if not existing
         if not os.path.exists(saved_weigths_path):
             os.makedirs(saved_weigths_path)
+
+        # recalib counter
+        if load_weights:
+            time_to_recalib = -1
+            # Check if the folder is not empty
+            if len(os.listdir(saved_weigths_path)) == 0:
+                sys.exit('ERROR: No weights to load!')
+        else:
+            time_to_recalib = 0
+
+        if restore_weights_at_recalib:
+            # Check if the folder is not empty
+            if len(os.listdir(saved_weigths_path)) == 0:
+                sys.exit('ERROR: No weights to restore!')
 
         # List to store results over recalibration
         ensem_test_PIs=[]
@@ -761,18 +697,22 @@ class PrTsfRecalibEngine:
                 tf.keras.backend.clear_session()
                 model = regression_model(settings=settings,
                                          sample_x=rec_samples.x_test)
-                weights_file_name = 'model_weights_' + str(e) + '.h5'
-                if (time_to_recalib == 0):
+                weights_file_name = self.model_configs['model_class'] + '_weights_' + str(e) + '.h5'
+                if time_to_recalib == 0:
                     train_history_path = os.path.join(path_history, f'train_history_{e}.png')
+                    # if model weights exist, load them and fit from there
+                    if (restore_weights_at_recalib and
+                            os.path.exists(os.path.join(saved_weigths_path, weights_file_name))):
+                        model.load_weights(os.path.join(saved_weigths_path, weights_file_name))
                     model.fit(train_x=rec_block.x_train, train_y=rec_block.y_train,
                               val_x=rec_block.x_vali, val_y=rec_block.y_vali,
                               plot_history=plot_history, path_history=train_history_path
                               )
-                    model.save_weights(os.path.join(saved_weigths_path,weights_file_name))
-                    if (e == settings['num_ense']-1): time_to_recalib = recalibFreq-1
+                    model.save_weights(os.path.join(saved_weigths_path, weights_file_name))
+                    if e == settings['num_ense']-1: time_to_recalib = self.model_configs['recalibration_frequency']-1
                 else:
-                    model.load_weights(os.path.join(saved_weigths_path,weights_file_name))
-                    if (e == settings['num_ense']-1): time_to_recalib = time_to_recalib-1
+                    model.load_weights(os.path.join(saved_weigths_path, weights_file_name))
+                    if e == settings['num_ense']-1: time_to_recalib = time_to_recalib-1
 
                 # Store ensemble component prediction on test sample
                 preds_test_e.append(model.predict(rec_samples.x_test))
@@ -783,10 +723,10 @@ class PrTsfRecalibEngine:
                     model.print_weights_stats()
 
             # Aggregate ensemble predictions
-            ensem_preds_test = ensemble.aggregate_preds(preds_test_e)
+            ense_preds_test = ensemble.aggregate_preds(preds_test_e)
 
             # Build and store the prediction quantiles for the current test samples using the selected method
-            ens_p = ensemble.get_preds_test_quantiles(preds_test=ensem_preds_test)
+            ens_p = ensemble.get_preds_test_quantiles(preds_test=ense_preds_test)
             rescaled_PIs = {}
             for i in range(ens_p.shape[-1]):
                 if self.data_configs.preprocess != 'Custom':

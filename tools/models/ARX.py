@@ -28,7 +28,6 @@ class ARXRegressor:
                                       activation='linear',
                                       kernel_regularizer=tf.keras.regularizers.l1_l2(l1=self.settings['l1'], l2=self.settings['l2'])
                                       )(x_in)
-        #output = tf.reshape(logit, (-1, self.settings['pred_horiz'], 1))
         output = tf.keras.layers.Reshape((self.settings['pred_horiz'], 1))(logit)
 
         # Create model
